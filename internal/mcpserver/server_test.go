@@ -16,6 +16,7 @@ var allExpectedTools = []string{
 	"whoami",
 	"list_workspaces",
 	"list_products",
+	"get_product",
 	"list_requirements",
 	"get_requirement",
 	"create_requirement",

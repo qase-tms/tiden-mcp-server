@@ -15,6 +15,7 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerWhoami(srv, client)
 	registerListWorkspaces(srv, client)
 	registerListProducts(srv, client, defaultWorkspaceID)
+	registerGetProduct(srv, client)
 	registerListRequirements(srv, client)
 	registerGetRequirement(srv, client)
 	registerCreateRequirement(srv, client)
@@ -93,6 +94,28 @@ func registerListProducts(srv *mcp.Server, client *api.Client, defaultWorkspaceI
 			return toolError(err)
 		}
 		return toolResult(resp)
+	})
+}
+
+// -- get_product --------------------------------------------------------------
+
+type getProductArgs struct {
+	ID string `json:"id" jsonschema:"Product UUID (required)."`
+}
+
+func registerGetProduct(srv *mcp.Server, client *api.Client) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_product",
+		Description: "Fetch a single product by id (name, code, description). Use when you have a product id and need its details without listing the whole workspace.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getProductArgs) (*mcp.CallToolResult, any, error) {
+		if args.ID == "" {
+			return toolError(errMissingField("id"))
+		}
+		product, err := client.GetProduct(ctx, args.ID)
+		if err != nil {
+			return toolError(err)
+		}
+		return toolResult(product)
 	})
 }
 
