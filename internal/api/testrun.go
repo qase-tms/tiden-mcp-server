@@ -67,6 +67,9 @@ func (c *Client) ListTestRuns(ctx context.Context, productID string, opts ListTe
 	if pageSize <= 0 {
 		pageSize = 20
 	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
 	q.Set("pagination.pageSize", strconv.Itoa(pageSize))
 	if opts.PageToken != "" {
 		q.Set("pagination.pageToken", opts.PageToken)
@@ -203,6 +206,9 @@ func (c *Client) ListRunResults(ctx context.Context, productID string, seq int, 
 	pageSize := opts.PageSize
 	if pageSize <= 0 {
 		pageSize = 50
+	}
+	if pageSize > 200 {
+		pageSize = 200
 	}
 	q.Set("pagination.pageSize", strconv.Itoa(pageSize))
 	if opts.PageToken != "" {

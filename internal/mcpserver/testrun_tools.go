@@ -10,6 +10,12 @@ import (
 	"github.com/qase-tms/tiden-mcp-server/internal/api"
 )
 
+// errInvalidRunSeq is the shared validation error for a missing/non-positive
+// run_seq, returned identically by every test-run tool that takes one.
+func errInvalidRunSeq() error {
+	return fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)")
+}
+
 // registerTestRunTools adds the Test Runs module tools. Runs are product-
 // scoped CI/reporter executions with their own per-product seq counter
 // ("Run #42") — run_seq is a small integer, never a UUID. delete_test_run is
@@ -32,7 +38,7 @@ type listTestRunsArgs struct {
 	Environment string `json:"environment,omitempty" jsonschema:"Filter by environment slug (optional; an unknown slug returns an empty page, it never errors)."`
 	Branch      string `json:"branch,omitempty"      jsonschema:"Filter by exact branch name (optional)."`
 	Search      string `json:"search,omitempty"      jsonschema:"Title substring filter (optional)."`
-	PageSize    int    `json:"page_size,omitempty"   jsonschema:"Page size (default 20)."`
+	PageSize    int    `json:"page_size,omitempty"   jsonschema:"Page size (default 20, max 200)."`
 	PageToken   string `json:"page_token,omitempty"  jsonschema:"Opaque token from a previous response's pagination.nextPageToken (optional)."`
 }
 
@@ -71,7 +77,7 @@ func registerGetTestRun(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
+			return toolError(errInvalidRunSeq())
 		}
 		run, err := client.GetTestRun(ctx, args.ProductID, args.RunSeq)
 		if err != nil {
@@ -91,7 +97,7 @@ type getRunResultsArgs struct {
 	Search      string `json:"search,omitempty"        jsonschema:"Flat form only. Title substring filter."`
 	IdentityKey string `json:"identity_key,omitempty"  jsonschema:"Flat form only. Exact case identity — all attempts of one case, e.g. its retry history."`
 	LatestOnly  bool   `json:"latest_only,omitempty"   jsonschema:"Flat form only. Collapse retries to the single latest attempt per parameter combination BEFORE other filters apply."`
-	PageSize    int    `json:"page_size,omitempty"     jsonschema:"Flat form only. Page size (default 50)."`
+	PageSize    int    `json:"page_size,omitempty"     jsonschema:"Flat form only. Page size (default 50, max 200)."`
 	PageToken   string `json:"page_token,omitempty"    jsonschema:"Flat form only. Opaque pagination token."`
 }
 
@@ -104,7 +110,7 @@ func registerGetRunResults(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
+			return toolError(errInvalidRunSeq())
 		}
 		if args.Summary {
 			sum, err := client.GetRunSummary(ctx, args.ProductID, args.RunSeq)
@@ -141,10 +147,13 @@ func registerReportTestResults(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
+			return toolError(errInvalidRunSeq())
 		}
 		if len(args.Results) == 0 {
 			return toolError(errMissingField("results"))
+		}
+		if len(args.Results) > 2000 {
+			return toolError(fmt.Errorf("results has %d entries; the batch cap is 2000 — split into multiple calls", len(args.Results)))
 		}
 		resp, err := client.ReportResults(ctx, args.ProductID, args.RunSeq, args.Results)
 		if err != nil {
@@ -185,7 +194,7 @@ func registerCompleteTestRun(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
+			return toolError(errInvalidRunSeq())
 		}
 		run, err := client.CompleteTestRun(ctx, args.ProductID, args.RunSeq)
 		if err != nil {
@@ -244,7 +253,7 @@ func registerAbortTestRun(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
+			return toolError(errInvalidRunSeq())
 		}
 		run, err := client.AbortTestRun(ctx, args.ProductID, args.RunSeq)
 		if err != nil {

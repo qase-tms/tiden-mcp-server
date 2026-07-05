@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -279,5 +280,34 @@ func TestGetRunSummary(t *testing.T) {
 	}
 	if len(sum.Cases) != 1 || sum.Cases[0].Combos[0].DurationMs != 3421 {
 		t.Errorf("cases = %+v", sum.Cases)
+	}
+}
+
+// TestPageSizeClamp asserts that an oversized page_size never round-trips
+// unbounded into the request: both ListTestRuns and ListRunResults clamp to
+// 200 before the request is sent, even though the caller asked for 10000.
+func TestPageSizeClamp(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("pagination.pageSize"); got != "200" {
+			t.Errorf("pagination.pageSize = %q, want 200", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/runs"):
+			_, _ = w.Write([]byte(`{"runs": [], "pagination": {"nextPageToken": "", "totalCount": 0}}`))
+		default:
+			_, _ = w.Write([]byte(`{"results": [], "pagination": {"nextPageToken": "", "totalCount": 0}}`))
+		}
+	}))
+	defer srv.Close()
+
+	client := newTestClient(srv.URL)
+	ctx := context.Background()
+
+	if _, err := client.ListTestRuns(ctx, "p1", ListTestRunsOptions{PageSize: 10000}); err != nil {
+		t.Fatalf("ListTestRuns: %v", err)
+	}
+	if _, err := client.ListRunResults(ctx, "p1", 42, ListRunResultsOptions{PageSize: 10000}); err != nil {
+		t.Fatalf("ListRunResults: %v", err)
 	}
 }

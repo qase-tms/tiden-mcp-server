@@ -20,8 +20,8 @@ func scopeFor(releaseID string) string {
 // -- gate_check ----------------------------------------------------------------
 
 type gateCheckArgs struct {
-	ProductID string `json:"product_id" jsonschema:"Product ID (required)."`
-	ReleaseID string `json:"release_id" jsonschema:"Release UUID to gate. Omit to gate current main."`
+	ProductID string `json:"product_id"           jsonschema:"Product ID (required)."`
+	ReleaseID string `json:"release_id,omitempty" jsonschema:"Release UUID to gate. Omit to gate current main."`
 }
 
 func registerGateCheck(srv *mcp.Server, client *api.Client) {
@@ -43,8 +43,8 @@ func registerGateCheck(srv *mcp.Server, client *api.Client) {
 // -- get_verdict ---------------------------------------------------------------
 
 type getVerdictArgs struct {
-	ProductID string `json:"product_id" jsonschema:"Product ID (required)."`
-	ReleaseID string `json:"release_id" jsonschema:"Release UUID. Omit for current main."`
+	ProductID string `json:"product_id"           jsonschema:"Product ID (required)."`
+	ReleaseID string `json:"release_id,omitempty" jsonschema:"Release UUID. Omit for current main."`
 }
 
 func registerGetVerdict(srv *mcp.Server, client *api.Client) {
@@ -88,8 +88,8 @@ func registerGetOverview(srv *mcp.Server, client *api.Client) {
 // -- get_traceability ----------------------------------------------------------
 
 type getTraceabilityArgs struct {
-	ProductID string `json:"product_id" jsonschema:"Product ID (required)."`
-	ReleaseID string `json:"release_id" jsonschema:"Release UUID. Omit for current main."`
+	ProductID string `json:"product_id"           jsonschema:"Product ID (required)."`
+	ReleaseID string `json:"release_id,omitempty" jsonschema:"Release UUID. Omit for current main."`
 }
 
 func registerGetTraceability(srv *mcp.Server, client *api.Client) {
@@ -111,13 +111,13 @@ func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 // -- create_test ---------------------------------------------------------------
 
 type createTestArgs struct {
-	ProductID   string `json:"product_id"  jsonschema:"Product ID (required)."`
-	Title       string `json:"title"       jsonschema:"Test title (required)."`
-	Kind        string `json:"kind"        jsonschema:"'case' (default) or 'suite'."`
-	Description string `json:"description" jsonschema:"Markdown description (optional)."`
-	ParentID    string `json:"parent_id"   jsonschema:"Parent suite UUID (optional)."`
-	ComponentID string `json:"component_id" jsonschema:"Component UUID to assign (optional)."`
-	Branch      string `json:"branch"      jsonschema:"Branch name (optional - defaults to main)."`
+	ProductID   string `json:"product_id"            jsonschema:"Product ID (required)."`
+	Title       string `json:"title"                 jsonschema:"Test title (required)."`
+	Kind        string `json:"kind,omitempty"        jsonschema:"'case' (default) or 'suite'."`
+	Description string `json:"description,omitempty" jsonschema:"Markdown description (optional)."`
+	ParentID    string `json:"parent_id,omitempty"   jsonschema:"Parent suite UUID (optional)."`
+	ComponentID string `json:"component_id,omitempty" jsonschema:"Component UUID to assign (optional)."`
+	Branch      string `json:"branch,omitempty"      jsonschema:"Branch name (optional - defaults to main)."`
 }
 
 func registerCreateTest(srv *mcp.Server, client *api.Client) {
@@ -158,13 +158,13 @@ func registerCreateTest(srv *mcp.Server, client *api.Client) {
 // -- update_test ---------------------------------------------------------------
 
 type updateTestArgs struct {
-	ID          string `json:"id"          jsonschema:"Test UUID (required)."`
-	Title       string `json:"title"       jsonschema:"New title (optional)."`
-	Description string `json:"description" jsonschema:"New markdown description (optional)."`
-	Status      string `json:"status"      jsonschema:"New status: Draft, Active, or Deprecated (optional)."`
-	Priority    string `json:"priority"    jsonschema:"New priority: Not set, Low, Medium, High, or Critical (optional)."`
-	ComponentID string `json:"component_id" jsonschema:"Reassign component UUID (optional)."`
-	Branch      string `json:"branch"      jsonschema:"Branch name (optional - defaults to main)."`
+	ID          string `json:"id"                    jsonschema:"Test UUID (required)."`
+	Title       string `json:"title,omitempty"       jsonschema:"New title (optional)."`
+	Description string `json:"description,omitempty" jsonschema:"New markdown description (optional)."`
+	Status      string `json:"status,omitempty"      jsonschema:"New status: Draft, Active, or Deprecated (optional)."`
+	Priority    string `json:"priority,omitempty"    jsonschema:"New priority: Not set, Low, Medium, High, or Critical (optional)."`
+	ComponentID string `json:"component_id,omitempty" jsonschema:"Reassign component UUID (optional)."`
+	Branch      string `json:"branch,omitempty"      jsonschema:"Branch name (optional - defaults to main)."`
 }
 
 func registerUpdateTest(srv *mcp.Server, client *api.Client) {
@@ -202,9 +202,9 @@ func registerUpdateTest(srv *mcp.Server, client *api.Client) {
 // -- link_requirement ----------------------------------------------------------
 
 type linkRequirementArgs struct {
-	TestID        string `json:"test_id"        jsonschema:"Test (case) UUID (required)."`
-	RequirementID string `json:"requirement_id" jsonschema:"Requirement UUID to link (required)."`
-	Branch        string `json:"branch"         jsonschema:"Branch name (optional - links are managed on main in v1)."`
+	TestID        string `json:"test_id"          jsonschema:"Test (case) UUID (required)."`
+	RequirementID string `json:"requirement_id"   jsonschema:"Requirement UUID to link (required)."`
+	Branch        string `json:"branch,omitempty" jsonschema:"Branch name (optional - links are managed on main in v1)."`
 }
 
 func registerLinkRequirement(srv *mcp.Server, client *api.Client) {

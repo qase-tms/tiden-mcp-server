@@ -169,13 +169,15 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 	}
 }
 
-// TestTestRunToolRequiredFields freezes the schema-derived "required" list for
-// every test-run tool. jsonschema.ForType marks any struct field WITHOUT
+// TestToolRequiredFields freezes the schema-derived "required" list for every
+// registered tool. jsonschema.ForType marks any struct field WITHOUT
 // ,omitempty/,omitzero in its json tag as required, so a field that is
-// genuinely optional (e.g. status, environment, page_size) must carry
-// ,omitempty or the SDK's pre-handler argument validation will reject calls
-// that omit it. This test guards against that regressing silently.
-func TestTestRunToolRequiredFields(t *testing.T) {
+// genuinely optional (e.g. status, environment, page_size, branch on most
+// mutators) must carry ,omitempty or the SDK's pre-handler argument
+// validation will reject calls that omit it - before the handler's own
+// errMissingField checks ever run. This test guards the whole tool registry
+// against that regressing silently, not just the test-run tools.
+func TestToolRequiredFields(t *testing.T) {
 	ctx := context.Background()
 	srv := newTestServer()
 
@@ -194,6 +196,28 @@ func TestTestRunToolRequiredFields(t *testing.T) {
 	defer func() { _ = session.Close() }()
 
 	wantRequired := map[string][]string{
+		"whoami":              {},
+		"list_workspaces":     {},
+		"list_products":       {},
+		"list_requirements":   {"product_id"},
+		"get_requirement":     {"id"},
+		"create_requirement":  {"product_id", "title"},
+		"update_requirement":  {"id"},
+		"list_tests":          {"product_id"},
+		"get_test":            {"id"},
+		"list_branches":       {"product_id"},
+		"create_branch":       {"product_id", "name"},
+		"get_merge_preview":   {"branch_id"},
+		"list_components":     {"product_id"},
+		"list_environments":   {"product_id"},
+		"list_releases":       {"product_id"},
+		"gate_check":          {"product_id"},
+		"get_verdict":         {"product_id"},
+		"get_overview":        {"product_id"},
+		"get_traceability":    {"product_id"},
+		"create_test":         {"product_id", "title"},
+		"update_test":         {"id"},
+		"link_requirement":    {"test_id", "requirement_id"},
 		"list_test_runs":      {"product_id"},
 		"get_test_run":        {"product_id", "run_seq"},
 		"get_run_results":     {"product_id", "run_seq"},
