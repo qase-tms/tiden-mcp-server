@@ -76,5 +76,12 @@ claude mcp add tiden -- tiden-mcp-server
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |
 | `link_requirement` | Link a test case to a requirement |
+| `list_test_runs` | List test runs for a product (status/environment/branch/search filters, paginated) |
+| `get_test_run` | Fetch one run by per-product seq number, incl. stats + live-doc sync outcome |
+| `get_run_results` | Run results: flat paginated attempts, or `summary=true` for the suite-tree rollup |
+| `report_test_results` | Submit a batch of test outcomes to a run (all-or-nothing, max 2000) |
+| `complete_test_run` | Finalize a run: compute verdict, lock results, trigger live-doc sync |
+| `create_test_run` | Create a run (status `new`) to report results into |
+| `abort_test_run` | Abort a run (terminal; skips live-doc sync) |
 
 All tools return compact JSON matching the Tiden public API response shapes.
