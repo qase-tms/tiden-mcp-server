@@ -35,6 +35,13 @@ var allExpectedTools = []string{
 	"create_test",
 	"update_test",
 	"link_requirement",
+	"list_test_runs",
+	"get_test_run",
+	"get_run_results",
+	"report_test_results",
+	"complete_test_run",
+	"create_test_run",
+	"abort_test_run",
 }
 
 // newTestServer creates an MCP server backed by a throwaway api.Client.
@@ -117,6 +124,34 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 		{
 			tool:  "get_merge_preview",
 			input: `{"branch_id": "branch-abc"}`,
+		},
+		{
+			tool:  "list_test_runs",
+			input: `{"product_id": "p1", "status": "failed", "page_size": 10}`,
+		},
+		{
+			tool:  "get_test_run",
+			input: `{"product_id": "p1", "run_seq": 42}`,
+		},
+		{
+			tool:  "get_run_results",
+			input: `{"product_id": "p1", "run_seq": 42, "summary": true}`,
+		},
+		{
+			tool:  "report_test_results",
+			input: `{"product_id": "p1", "run_seq": 42, "results": [{"title": "t", "execution": {"status": "passed"}}]}`,
+		},
+		{
+			tool:  "complete_test_run",
+			input: `{"product_id": "p1", "run_seq": 42}`,
+		},
+		{
+			tool:  "create_test_run",
+			input: `{"product_id": "p1", "title": "Nightly", "environment": "staging"}`,
+		},
+		{
+			tool:  "abort_test_run",
+			input: `{"product_id": "p1", "run_seq": 42}`,
 		},
 	}
 

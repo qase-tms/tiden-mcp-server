@@ -34,6 +34,7 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerCreateTest(srv, client)
 	registerUpdateTest(srv, client)
 	registerLinkRequirement(srv, client)
+	registerTestRunTools(srv, client)
 }
 
 // -- whoami ------------------------------------------------------------------
