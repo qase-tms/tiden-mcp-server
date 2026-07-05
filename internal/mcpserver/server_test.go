@@ -3,6 +3,7 @@ package mcpserver_test
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -166,4 +167,103 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestTestRunToolRequiredFields freezes the schema-derived "required" list for
+// every test-run tool. jsonschema.ForType marks any struct field WITHOUT
+// ,omitempty/,omitzero in its json tag as required, so a field that is
+// genuinely optional (e.g. status, environment, page_size) must carry
+// ,omitempty or the SDK's pre-handler argument validation will reject calls
+// that omit it. This test guards against that regressing silently.
+func TestTestRunToolRequiredFields(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	serverDone := make(chan error, 1)
+	go func() {
+		serverDone <- srv.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	wantRequired := map[string][]string{
+		"list_test_runs":      {"product_id"},
+		"get_test_run":        {"product_id", "run_seq"},
+		"get_run_results":     {"product_id", "run_seq"},
+		"report_test_results": {"product_id", "run_seq", "results"},
+		"complete_test_run":   {"product_id", "run_seq"},
+		"create_test_run":     {"product_id"},
+		"abort_test_run":      {"product_id", "run_seq"},
+	}
+
+	found := map[string]bool{}
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		want, ok := wantRequired[tool.Name]
+		if !ok {
+			continue
+		}
+		found[tool.Name] = true
+
+		// From the client, InputSchema is the default JSON marshaling of the
+		// server's schema: a map[string]any.
+		schema, ok := tool.InputSchema.(map[string]any)
+		if !ok {
+			t.Errorf("%s: InputSchema is %T, want map[string]any", tool.Name, tool.InputSchema)
+			continue
+		}
+
+		var got []string
+		if rawRequired, ok := schema["required"]; ok {
+			items, ok := rawRequired.([]any)
+			if !ok {
+				t.Errorf("%s: required field is %T, want []any", tool.Name, rawRequired)
+				continue
+			}
+			for _, item := range items {
+				s, ok := item.(string)
+				if !ok {
+					t.Errorf("%s: required item %v is %T, want string", tool.Name, item, item)
+					continue
+				}
+				got = append(got, s)
+			}
+		}
+
+		gotSorted := append([]string(nil), got...)
+		wantSorted := append([]string(nil), want...)
+		sort.Strings(gotSorted)
+		sort.Strings(wantSorted)
+
+		if !equalStringSlices(gotSorted, wantSorted) {
+			t.Errorf("%s: required = %v, want %v", tool.Name, gotSorted, wantSorted)
+		}
+	}
+
+	for name := range wantRequired {
+		if !found[name] {
+			t.Errorf("tool %q not found while checking required fields", name)
+		}
+	}
+}
+
+func equalStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

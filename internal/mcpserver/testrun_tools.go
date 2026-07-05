@@ -27,13 +27,13 @@ func registerTestRunTools(srv *mcp.Server, client *api.Client) {
 // -- list_test_runs -------------------------------------------------------
 
 type listTestRunsArgs struct {
-	ProductID   string `json:"product_id"  jsonschema:"Product ID (required)."`
-	Status      string `json:"status"      jsonschema:"Filter by run status: new, in_progress, passed, failed, or aborted (optional)."`
-	Environment string `json:"environment" jsonschema:"Filter by environment slug (optional; an unknown slug returns an empty page, it never errors)."`
-	Branch      string `json:"branch"      jsonschema:"Filter by exact branch name (optional)."`
-	Search      string `json:"search"      jsonschema:"Title substring filter (optional)."`
-	PageSize    int    `json:"page_size"   jsonschema:"Page size (default 20)."`
-	PageToken   string `json:"page_token"  jsonschema:"Opaque token from a previous response's pagination.nextPageToken (optional)."`
+	ProductID   string `json:"product_id"            jsonschema:"Product ID (required)."`
+	Status      string `json:"status,omitempty"      jsonschema:"Filter by run status: new, in_progress, passed, failed, or aborted (optional)."`
+	Environment string `json:"environment,omitempty" jsonschema:"Filter by environment slug (optional; an unknown slug returns an empty page, it never errors)."`
+	Branch      string `json:"branch,omitempty"      jsonschema:"Filter by exact branch name (optional)."`
+	Search      string `json:"search,omitempty"      jsonschema:"Title substring filter (optional)."`
+	PageSize    int    `json:"page_size,omitempty"   jsonschema:"Page size (default 20)."`
+	PageToken   string `json:"page_token,omitempty"  jsonschema:"Opaque token from a previous response's pagination.nextPageToken (optional)."`
 }
 
 func registerListTestRuns(srv *mcp.Server, client *api.Client) {
@@ -65,13 +65,13 @@ type getTestRunArgs struct {
 func registerGetTestRun(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_test_run",
-		Description: "Fetch one test run by its per-product sequence number, including stats and the live-documentation sync outcome (liveDocStatus settles from pending to succeeded/failed after completion — re-poll to observe it).",
+		Description: "Fetch one test run by its per-product sequence number, including stats and the live-documentation sync outcome (liveDocStatus settles from pending to succeeded/failed — or is skipped for aborted runs and products with live documentation disabled — re-poll to observe it).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTestRunArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(errMissingField("run_seq"))
+			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
 		}
 		run, err := client.GetTestRun(ctx, args.ProductID, args.RunSeq)
 		if err != nil {
@@ -84,15 +84,15 @@ func registerGetTestRun(srv *mcp.Server, client *api.Client) {
 // -- get_run_results --------------------------------------------------------
 
 type getRunResultsArgs struct {
-	ProductID   string `json:"product_id"   jsonschema:"Product ID (required)."`
-	RunSeq      int    `json:"run_seq"      jsonschema:"The run's per-product sequence number (required)."`
-	Summary     bool   `json:"summary"      jsonschema:"true = pre-aggregated suite tree + per-case rollups with param combos (GetRunSummary); false = flat paginated result rows (default)."`
-	Status      string `json:"status"       jsonschema:"Flat form only. Filter: passed, failed, blocked, skipped, or invalid. With latest_only it means 'currently red', not 'failed at least once'."`
-	Search      string `json:"search"       jsonschema:"Flat form only. Title substring filter."`
-	IdentityKey string `json:"identity_key" jsonschema:"Flat form only. Exact case identity — all attempts of one case, e.g. its retry history."`
-	LatestOnly  bool   `json:"latest_only"  jsonschema:"Flat form only. Collapse retries to the single latest attempt per parameter combination BEFORE other filters apply."`
-	PageSize    int    `json:"page_size"    jsonschema:"Flat form only. Page size (default 50)."`
-	PageToken   string `json:"page_token"   jsonschema:"Flat form only. Opaque pagination token."`
+	ProductID   string `json:"product_id"             jsonschema:"Product ID (required)."`
+	RunSeq      int    `json:"run_seq"                 jsonschema:"The run's per-product sequence number (required)."`
+	Summary     bool   `json:"summary,omitempty"       jsonschema:"true = pre-aggregated suite tree + per-case rollups with param combos (GetRunSummary); false = flat paginated result rows (default)."`
+	Status      string `json:"status,omitempty"        jsonschema:"Flat form only. Filter: passed, failed, blocked, skipped, or invalid. With latest_only it means 'currently red', not 'failed at least once'."`
+	Search      string `json:"search,omitempty"        jsonschema:"Flat form only. Title substring filter."`
+	IdentityKey string `json:"identity_key,omitempty"  jsonschema:"Flat form only. Exact case identity — all attempts of one case, e.g. its retry history."`
+	LatestOnly  bool   `json:"latest_only,omitempty"   jsonschema:"Flat form only. Collapse retries to the single latest attempt per parameter combination BEFORE other filters apply."`
+	PageSize    int    `json:"page_size,omitempty"     jsonschema:"Flat form only. Page size (default 50)."`
+	PageToken   string `json:"page_token,omitempty"    jsonschema:"Flat form only. Opaque pagination token."`
 }
 
 func registerGetRunResults(srv *mcp.Server, client *api.Client) {
@@ -104,7 +104,7 @@ func registerGetRunResults(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(errMissingField("run_seq"))
+			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
 		}
 		if args.Summary {
 			sum, err := client.GetRunSummary(ctx, args.ProductID, args.RunSeq)
@@ -141,7 +141,7 @@ func registerReportTestResults(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(errMissingField("run_seq"))
+			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
 		}
 		if len(args.Results) == 0 {
 			return toolError(errMissingField("results"))
@@ -185,7 +185,7 @@ func registerCompleteTestRun(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(errMissingField("run_seq"))
+			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
 		}
 		run, err := client.CompleteTestRun(ctx, args.ProductID, args.RunSeq)
 		if err != nil {
@@ -198,14 +198,14 @@ func registerCompleteTestRun(srv *mcp.Server, client *api.Client) {
 // -- create_test_run -----------------------------------------------------------
 
 type createTestRunArgs struct {
-	ProductID      string            `json:"product_id"     jsonschema:"Product ID (required)."`
-	Title          string            `json:"title"          jsonschema:"Run title (optional - server defaults to 'Automated run <timestamp>')."`
-	Description    string            `json:"description"    jsonschema:"Run description (optional)."`
-	Environment    string            `json:"environment"    jsonschema:"Environment slug (optional; an unknown slug auto-creates the environment)."`
-	Branch         string            `json:"branch"         jsonschema:"CI branch name, free text (optional). On completion the live-doc sync resolves/creates the Tiden branch of this name."`
-	BuildSha       string            `json:"build_sha"      jsonschema:"Build/commit SHA (optional)."`
-	Configurations map[string]string `json:"configurations" jsonschema:"Free-form configuration map, e.g. {\"browser\": \"chromium\"} (optional)."`
-	ClientMeta     map[string]string `json:"client_meta"    jsonschema:"Reporter metadata, e.g. {\"framework\": \"playwright\"} (optional)."`
+	ProductID      string            `json:"product_id"                jsonschema:"Product ID (required)."`
+	Title          string            `json:"title,omitempty"           jsonschema:"Run title (optional - server defaults to 'Automated run <timestamp>')."`
+	Description    string            `json:"description,omitempty"     jsonschema:"Run description (optional)."`
+	Environment    string            `json:"environment,omitempty"     jsonschema:"Environment slug (optional; an unknown slug auto-creates the environment)."`
+	Branch         string            `json:"branch,omitempty"          jsonschema:"CI branch name, free text (optional). On completion the live-doc sync resolves/creates the Tiden branch of this name."`
+	BuildSha       string            `json:"build_sha,omitempty"       jsonschema:"Build/commit SHA (optional)."`
+	Configurations map[string]string `json:"configurations,omitempty"  jsonschema:"Free-form configuration map, e.g. {\"browser\": \"chromium\"} (optional)."`
+	ClientMeta     map[string]string `json:"client_meta,omitempty"     jsonschema:"Reporter metadata, e.g. {\"framework\": \"playwright\"} (optional)."`
 }
 
 func registerCreateTestRun(srv *mcp.Server, client *api.Client) {
@@ -244,7 +244,7 @@ func registerAbortTestRun(srv *mcp.Server, client *api.Client) {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
-			return toolError(errMissingField("run_seq"))
+			return toolError(fmt.Errorf("run_seq must be a positive integer (the run's per-product sequence number)"))
 		}
 		run, err := client.AbortTestRun(ctx, args.ProductID, args.RunSeq)
 		if err != nil {
