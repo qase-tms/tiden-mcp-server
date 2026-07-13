@@ -35,6 +35,7 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerCreateTest(srv, client)
 	registerUpdateTest(srv, client)
 	registerLinkRequirement(srv, client)
+	registerTestRunTools(srv, client)
 }
 
 // -- whoami ------------------------------------------------------------------
@@ -74,7 +75,7 @@ func registerListWorkspaces(srv *mcp.Server, client *api.Client) {
 // -- list_products ------------------------------------------------------------
 
 type listProductsArgs struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"Workspace ID. Omit to use the default workspace from config."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Workspace ID. Omit to use the default workspace from config."`
 }
 
 func registerListProducts(srv *mcp.Server, client *api.Client, defaultWorkspaceID string) {
@@ -122,8 +123,8 @@ func registerGetProduct(srv *mcp.Server, client *api.Client) {
 // -- list_requirements --------------------------------------------------------
 
 type listRequirementsArgs struct {
-	ProductID string `json:"product_id" jsonschema:"Product ID (required)."`
-	Branch    string `json:"branch"     jsonschema:"Branch name. Omit for the main branch."`
+	ProductID string `json:"product_id"          jsonschema:"Product ID (required)."`
+	Branch    string `json:"branch,omitempty"    jsonschema:"Branch name. Omit for the main branch."`
 }
 
 func registerListRequirements(srv *mcp.Server, client *api.Client) {
@@ -167,12 +168,12 @@ func registerGetRequirement(srv *mcp.Server, client *api.Client) {
 // -- create_requirement -------------------------------------------------------
 
 type createRequirementArgs struct {
-	ProductID   string                         `json:"product_id"   jsonschema:"Product ID (required)."`
-	Title       string                         `json:"title"        jsonschema:"Requirement title (required)."`
-	Description string                         `json:"description"  jsonschema:"Markdown description body (optional)."`
-	ParentID    string                         `json:"parent_id"    jsonschema:"UUID of the parent requirement for nested hierarchy (optional)."`
-	Branch      string                         `json:"branch"       jsonschema:"Branch name. Omit to create on the main branch."`
-	Sources     []model.RequirementSourceInput `json:"sources" jsonschema:"Structured requirement sources/provenance. Omit to leave empty."`
+	ProductID   string                         `json:"product_id"           jsonschema:"Product ID (required)."`
+	Title       string                         `json:"title"                jsonschema:"Requirement title (required)."`
+	Description string                         `json:"description,omitempty" jsonschema:"Markdown description body (optional)."`
+	ParentID    string                         `json:"parent_id,omitempty"  jsonschema:"UUID of the parent requirement for nested hierarchy (optional)."`
+	Branch      string                         `json:"branch,omitempty"     jsonschema:"Branch name. Omit to create on the main branch."`
+	Sources     []model.RequirementSourceInput `json:"sources,omitempty"    jsonschema:"Structured requirement sources/provenance. Omit to leave empty."`
 }
 
 func registerCreateRequirement(srv *mcp.Server, client *api.Client) {
@@ -197,13 +198,13 @@ func registerCreateRequirement(srv *mcp.Server, client *api.Client) {
 // -- update_requirement -------------------------------------------------------
 
 type updateRequirementArgs struct {
-	ID            string                          `json:"id"           jsonschema:"Requirement UUID (required)."`
-	Title         string                          `json:"title"        jsonschema:"New title (optional - omit to leave unchanged)."`
-	Description   string                          `json:"description"  jsonschema:"New markdown description (optional - omit to leave unchanged)."`
-	Status        string                          `json:"status"       jsonschema:"New status: Backlog, Active, Review, or Done (optional)."`
-	Priority      string                          `json:"priority"     jsonschema:"New priority: Not set, Low, Medium, High, or Critical (optional)."`
-	Branch        string                          `json:"branch"       jsonschema:"Branch name for the update (optional - defaults to main)."`
-	SourcesUpdate *model.RequirementSourcesUpdate `json:"sources_update" jsonschema:"Whole-set replacement for structured sources. Omit to leave sources unchanged; pass {sources: []} to clear."`
+	ID            string                          `json:"id"                       jsonschema:"Requirement UUID (required)."`
+	Title         string                          `json:"title,omitempty"          jsonschema:"New title (optional - omit to leave unchanged)."`
+	Description   string                          `json:"description,omitempty"    jsonschema:"New markdown description (optional - omit to leave unchanged)."`
+	Status        string                          `json:"status,omitempty"         jsonschema:"New status: Backlog, Active, Review, or Done (optional)."`
+	Priority      string                          `json:"priority,omitempty"       jsonschema:"New priority: Not set, Low, Medium, High, or Critical (optional)."`
+	Branch        string                          `json:"branch,omitempty"         jsonschema:"Branch name for the update (optional - defaults to main)."`
+	SourcesUpdate *model.RequirementSourcesUpdate `json:"sources_update,omitempty" jsonschema:"Whole-set replacement for structured sources. Omit to leave sources unchanged; pass {sources: []} to clear."`
 }
 
 func registerUpdateRequirement(srv *mcp.Server, client *api.Client) {
@@ -233,8 +234,8 @@ func registerUpdateRequirement(srv *mcp.Server, client *api.Client) {
 // -- list_tests ---------------------------------------------------------------
 
 type listTestsArgs struct {
-	ProductID string `json:"product_id" jsonschema:"Product ID (required)."`
-	Branch    string `json:"branch"     jsonschema:"Branch name. Omit for the main branch."`
+	ProductID string `json:"product_id"       jsonschema:"Product ID (required)."`
+	Branch    string `json:"branch,omitempty" jsonschema:"Branch name. Omit for the main branch."`
 }
 
 func registerListTests(srv *mcp.Server, client *api.Client) {
@@ -300,9 +301,9 @@ func registerListBranches(srv *mcp.Server, client *api.Client) {
 // -- create_branch -------------------------------------------------------------
 
 type createBranchArgs struct {
-	ProductID   string `json:"product_id"  jsonschema:"Product ID (required)."`
-	Name        string `json:"name"        jsonschema:"Branch name (required). Must match ^[a-z0-9][a-z0-9/_-]*$ and be unique within the product."`
-	Description string `json:"description" jsonschema:"Human-readable description of the branch's purpose (optional)."`
+	ProductID   string `json:"product_id"           jsonschema:"Product ID (required)."`
+	Name        string `json:"name"                 jsonschema:"Branch name (required). Must match ^[a-z0-9][a-z0-9/_-]*$ and be unique within the product."`
+	Description string `json:"description,omitempty" jsonschema:"Human-readable description of the branch's purpose (optional)."`
 }
 
 func registerCreateBranch(srv *mcp.Server, client *api.Client) {
