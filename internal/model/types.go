@@ -32,8 +32,17 @@ type Component struct {
 	ProductID   string `json:"productId"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	CreatedAt   string `json:"createdAt,omitempty"`
-	UpdatedAt   string `json:"updatedAt,omitempty"`
+	// Repository/ComponentPaths/RepositoryAliases are the shift-left v3
+	// repository-aware component fields (tiden-app migration 000073).
+	// Repository is the canonical repo id (e.g. "github.com/qase-tms/tiden-cli");
+	// nil/absent means unscoped (the product's main repo). ComponentPaths are
+	// subtree path-prefix scopes within that repository (empty = whole repo).
+	// RepositoryAliases are local checkout paths mapped to the canonical id.
+	Repository        *string  `json:"repository,omitempty"`
+	ComponentPaths    []string `json:"componentPaths,omitempty"`
+	RepositoryAliases []string `json:"repositoryAliases,omitempty"`
+	CreatedAt         string   `json:"createdAt,omitempty"`
+	UpdatedAt         string   `json:"updatedAt,omitempty"`
 }
 
 type Environment struct {

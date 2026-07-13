@@ -332,7 +332,7 @@ type listComponentsArgs struct {
 func registerListComponents(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_components",
-		Description: "List components for a product. Components are used to categorise requirements and tests.",
+		Description: "List a product's components with their repository scope. A component is a deployment/architectural unit (a service, or a build-manifest tier such as frontend/backend) that requirements and tests are grouped under; each may carry a repository + path scope (repository/componentPaths/repositoryAliases) mapping it to code.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listComponentsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
