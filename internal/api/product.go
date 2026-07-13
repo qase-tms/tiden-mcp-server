@@ -19,3 +19,16 @@ func (c *Client) ListProducts(ctx context.Context, workspaceID string) (*ListPro
 	}
 	return &resp, nil
 }
+
+type GetProductResponse struct {
+	Product model.Product `json:"product"`
+}
+
+func (c *Client) GetProduct(ctx context.Context, id string) (*model.Product, error) {
+	var resp GetProductResponse
+	path := pathf("/v1/products/%s", id)
+	if err := c.Do(ctx, "GET", path, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp.Product, nil
+}
