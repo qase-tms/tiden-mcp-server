@@ -130,7 +130,7 @@ type listRequirementsArgs struct {
 func registerListRequirements(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_requirements",
-		Description: "List requirements for a product, optionally scoped to a branch. Returns up to 100 items; use branch to view branch-local copies.",
+		Description: "List all requirements for a product, optionally scoped to a branch; use branch to view branch-local copies.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listRequirementsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -241,7 +241,7 @@ type listTestsArgs struct {
 func registerListTests(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_tests",
-		Description: "List test suites and cases for a product, optionally scoped to a branch. Each item has a 'kind' field: 'suite' or 'case'.",
+		Description: "List all test suites and cases for a product, optionally scoped to a branch. Each item has a 'kind' field: 'suite' or 'case'.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listTestsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
