@@ -84,5 +84,6 @@ claude mcp add tiden -- tiden-mcp-server
 | `complete_test_run` | Finalize a run: compute verdict, lock results, trigger live-doc sync |
 | `create_test_run` | Create a run (status `new`) to report results into |
 | `abort_test_run` | Abort a run (terminal; skips live-doc sync) |
+| `capture_intent` | Distill a session's product decisions into a reviewable `intent/<date>-<slug>` branch (server-side distiller; may take a few minutes) |
 
 All tools return compact JSON matching the Tiden public API response shapes.

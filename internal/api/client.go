@@ -74,6 +74,14 @@ func NewWithTimeout(baseURL, token string, timeout time.Duration) *Client {
 	}
 }
 
+// WithTimeout returns a shallow copy of the client whose HTTP timeout is d.
+// Used by long-running endpoints (intent distill runs an LLM server-side).
+func (c *Client) WithTimeout(d time.Duration) *Client {
+	cp := *c
+	cp.httpClient = &http.Client{Timeout: d}
+	return &cp
+}
+
 // Do executes an HTTP request with auth. It retries with exponential backoff
 // on 429/5xx (any method - pre-existing behavior: a 5xx after a committed
 // write may re-send a POST) and on transport errors for idempotent methods

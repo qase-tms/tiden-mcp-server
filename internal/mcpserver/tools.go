@@ -36,6 +36,7 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerUpdateTest(srv, client)
 	registerLinkRequirement(srv, client)
 	registerTestRunTools(srv, client)
+	registerCaptureIntent(srv, client)
 }
 
 // -- whoami ------------------------------------------------------------------
