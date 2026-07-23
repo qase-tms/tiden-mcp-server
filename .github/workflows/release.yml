@@ -25,3 +25,7 @@ jobs:
           distribution: goreleaser
           version: '~> v2'
           args: release --clean
+        env:
+          # Releases are published to this repo's own Releases page, so the
+          # workflow-default token (contents: write above) is sufficient.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
