@@ -47,6 +47,17 @@ func toolResult(v any) (*mcp.CallToolResult, any, error) {
 	}, nil, nil
 }
 
+// toolText wraps a plain human-readable string as a single MCP TextContent
+// block. Unlike toolResult it does not JSON-encode the value - use it for
+// tools whose output is a summary sentence rather than an API response shape.
+func toolText(s string) (*mcp.CallToolResult, any, error) {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: s},
+		},
+	}, nil, nil
+}
+
 // toolError converts an API error into an MCP tool error result.
 // The server message is forwarded verbatim so the LLM has full context.
 func toolError(err error) (*mcp.CallToolResult, any, error) {

@@ -44,6 +44,7 @@ var allExpectedTools = []string{
 	"complete_test_run",
 	"create_test_run",
 	"abort_test_run",
+	"capture_intent",
 }
 
 // newTestServer creates an MCP server backed by a throwaway api.Client.
@@ -155,6 +156,10 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 			tool:  "abort_test_run",
 			input: `{"product_id": "p1", "run_seq": 42}`,
 		},
+		{
+			tool:  "capture_intent",
+			input: `{"product_id": "p1", "transcript": "USER: add X\nASSISTANT: done", "slug": "add-x", "session_id": "s1", "agent": "cursor", "changed_files": ["a.go"]}`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -226,6 +231,7 @@ func TestToolRequiredFields(t *testing.T) {
 		"complete_test_run":   {"product_id", "run_seq"},
 		"create_test_run":     {"product_id"},
 		"abort_test_run":      {"product_id", "run_seq"},
+		"capture_intent":      {"product_id", "transcript"},
 	}
 
 	found := map[string]bool{}
