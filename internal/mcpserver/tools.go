@@ -37,6 +37,14 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerLinkRequirement(srv, client)
 	registerTestRunTools(srv, client)
 	registerCaptureIntent(srv, client)
+	registerListIssues(srv, client)
+	registerGetIssue(srv, client)
+	registerListIssueEvents(srv, client)
+	registerGetIssueEvent(srv, client)
+	registerGetIssueEventStats(srv, client)
+	registerGetIssueFixContext(srv, client)
+	registerListReleaseIssues(srv, client)
+	registerSetIssueStatus(srv, client)
 }
 
 // -- whoami ------------------------------------------------------------------
