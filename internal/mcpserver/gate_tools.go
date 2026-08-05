@@ -8,11 +8,14 @@ import (
 	"github.com/qase-tms/tiden-mcp-server/internal/api"
 )
 
-// scopeFor picks the verdict scope: a release id -> release scope, empty -> current
-// main (not tied to a release).
-func scopeFor(releaseID string) string {
+// scopeFor picks the verdict scope: a release id -> release scope, else a
+// branch name -> branch scope, else current main (not tied to a release).
+func scopeFor(releaseID, branch string) string {
 	if releaseID != "" {
 		return "release"
+	}
+	if branch != "" {
+		return "branch"
 	}
 	return "main"
 }
@@ -22,17 +25,18 @@ func scopeFor(releaseID string) string {
 type gateCheckArgs struct {
 	ProductID string `json:"product_id"           jsonschema:"Product ID (required)."`
 	ReleaseID string `json:"release_id,omitempty" jsonschema:"Release UUID to gate. Omit to gate current main."`
+	Branch    string `json:"branch,omitempty"     jsonschema:"Branch name to gate (e.g. an intent branch). Ignored when release_id is set; omit both for current main."`
 }
 
 func registerGateCheck(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate_check",
-		Description: "Compute the Quality Gate verdict (go/no-go) for a release, or current main if no release is given. Returns the verdict status (pass / blocked / risk_accepted), the per-component breakdown, and fix hints. Use this as the 'verify gates' step before shipping.",
+		Description: "Compute the Quality Gate verdict (go/no-go) for a release, a branch, or current main if neither is given. Returns the verdict status (pass / blocked / risk_accepted), the per-component breakdown, and fix hints. Use this as the 'verify gates' step before shipping; pass branch to preview an intent branch's post-merge gate.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args gateCheckArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		v, err := client.ComputeVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID), args.ReleaseID)
+		v, err := client.ComputeVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
 		if err != nil {
 			return toolError(err)
 		}
@@ -45,17 +49,18 @@ func registerGateCheck(srv *mcp.Server, client *api.Client) {
 type getVerdictArgs struct {
 	ProductID string `json:"product_id"           jsonschema:"Product ID (required)."`
 	ReleaseID string `json:"release_id,omitempty" jsonschema:"Release UUID. Omit for current main."`
+	Branch    string `json:"branch,omitempty"     jsonschema:"Branch name (e.g. an intent branch). Ignored when release_id is set; omit both for current main."`
 }
 
 func registerGetVerdict(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_verdict",
-		Description: "Read the latest Quality Gate verdict for a release (or current main) without recomputing.",
+		Description: "Read the latest Quality Gate verdict for a release, a branch, or current main without recomputing.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getVerdictArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		v, err := client.GetVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID), args.ReleaseID)
+		v, err := client.GetVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
 		if err != nil {
 			return toolError(err)
 		}
@@ -77,7 +82,7 @@ func registerGetOverview(srv *mcp.Server, client *api.Client) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		v, err := client.GetVerdict(ctx, args.ProductID, "main", "")
+		v, err := client.GetVerdict(ctx, args.ProductID, "main", "", "")
 		if err != nil {
 			return toolError(err)
 		}
@@ -90,17 +95,18 @@ func registerGetOverview(srv *mcp.Server, client *api.Client) {
 type getTraceabilityArgs struct {
 	ProductID string `json:"product_id"           jsonschema:"Product ID (required)."`
 	ReleaseID string `json:"release_id,omitempty" jsonschema:"Release UUID. Omit for current main."`
+	Branch    string `json:"branch,omitempty"     jsonschema:"Branch name (e.g. an intent branch). Ignored when release_id is set; omit both for current main."`
 }
 
 func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_traceability",
-		Description: "Requirement->test traceability matrix for a release (or current main): per requirement, its test-coverage state (verified / not_run / no_test) and the linked tests with their latest execution status. Use it to find coverage gaps.",
+		Description: "Requirement->test traceability matrix for a release, a branch, or current main: per requirement, its test-coverage state (verified / not_run / no_test) and the linked tests with their latest execution status. Use it to find coverage gaps.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTraceabilityArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		m, err := client.GetTraceability(ctx, args.ProductID, scopeFor(args.ReleaseID), args.ReleaseID)
+		m, err := client.GetTraceability(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
 		if err != nil {
 			return toolError(err)
 		}
