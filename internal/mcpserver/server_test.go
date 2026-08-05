@@ -34,6 +34,7 @@ var allExpectedTools = []string{
 	"get_verdict",
 	"get_overview",
 	"get_traceability",
+	"session_progress",
 	"create_test",
 	"update_test",
 	"link_requirement",
@@ -129,6 +130,22 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 			input: `{"branch_id": "branch-abc"}`,
 		},
 		{
+			tool:  "gate_check",
+			input: `{"product_id": "prod-123", "branch": "intent/2026-08-05-x"}`,
+		},
+		{
+			tool:  "get_verdict",
+			input: `{"product_id": "prod-123", "release_id": "rel-1", "branch": ""}`,
+		},
+		{
+			tool:  "get_traceability",
+			input: `{"product_id": "prod-123", "branch": "intent/2026-08-05-x"}`,
+		},
+		{
+			tool:  "session_progress",
+			input: `{"product_id": "prod-123", "session_id": "3f0e8c1a-2b4d-4e6f-8a9b-0c1d2e3f4a5b", "requirement_ids": ["req-1", "req-2"], "intent_branch": "intent/2026-08-05-x"}`,
+		},
+		{
 			tool:  "list_test_runs",
 			input: `{"product_id": "p1", "status": "failed", "page_size": 10}`,
 		},
@@ -221,6 +238,7 @@ func TestToolRequiredFields(t *testing.T) {
 		"get_verdict":         {"product_id"},
 		"get_overview":        {"product_id"},
 		"get_traceability":    {"product_id"},
+		"session_progress":    {"product_id", "session_id", "requirement_ids"},
 		"create_test":         {"product_id", "title"},
 		"update_test":         {"id"},
 		"link_requirement":    {"test_id", "requirement_id"},

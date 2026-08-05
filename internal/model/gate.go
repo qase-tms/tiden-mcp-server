@@ -14,8 +14,28 @@ type Verdict struct {
 	Status             string                `json:"status"`
 	ComputedAt         string                `json:"computedAt,omitempty"`
 	Components         []GateComponentResult `json:"components,omitempty"`
+	Subjects           []GateSubjectResult   `json:"subjects,omitempty"`
 	FixHints           []GateFixHint         `json:"fixHints,omitempty"`
 	AcceptanceRequired bool                  `json:"acceptanceRequired,omitempty"`
+}
+
+// GateSubjectResult is the per-subject breakdown of a verdict - the
+// generalization of GateComponentResult across subject types
+// (component | feature | product). Features are first-class gate subjects;
+// `subjects` supersedes the component-only `components` list.
+type GateSubjectResult struct {
+	SubjectType  string                `json:"subjectType"`
+	SubjectID    string                `json:"subjectId"`
+	Name         string                `json:"name"`
+	Status       string                `json:"status"`
+	ResidualRisk *float64              `json:"residualRisk,omitempty"`
+	Ceiling      *int                  `json:"ceiling,omitempty"`
+	Criteria     []GateCriterionResult `json:"criteria,omitempty"`
+	// RiskSource names the component whose risk profile drove a feature's risk
+	// fan-in; IssueSources names the components that contributed open issues.
+	// Both empty for component/product subjects.
+	RiskSource   string   `json:"riskSource,omitempty"`
+	IssueSources []string `json:"issueSources,omitempty"`
 }
 
 type GateComponentResult struct {
@@ -60,13 +80,17 @@ type MatrixComponent struct {
 	Status       string              `json:"status"`
 	ResidualRisk *float64            `json:"residualRisk,omitempty"`
 	Ceiling      *int                `json:"ceiling,omitempty"`
+	Repository   string              `json:"repository,omitempty"` // source repo this component maps to
 	Requirements []MatrixRequirement `json:"requirements"`
 }
 
 type MatrixRequirement struct {
 	RequirementID string       `json:"requirementId"`
 	Display       string       `json:"display"`
-	Coverage      string       `json:"coverage"` // "verified" | "not_run" | "no_test"
+	Title         string       `json:"title,omitempty"`        // requirement title
+	ParentID      string       `json:"parentId,omitempty"`     // parent requirement id (feature-tree grouping)
+	BranchStatus  string       `json:"branchStatus,omitempty"` // "added" | "modified" | "unchanged" (branch scope only)
+	Coverage      string       `json:"coverage"`               // "verified" | "not_run" | "no_test"
 	Cells         []MatrixCell `json:"cells"`
 }
 

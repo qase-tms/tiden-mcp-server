@@ -70,10 +70,11 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_components` | Components for a product |
 | `list_environments` | Deployment environments for a product |
 | `list_releases` | Releases for a product |
-| `gate_check` | Compute a Quality Gate verdict |
-| `get_verdict` | Read the latest Quality Gate verdict |
+| `gate_check` | Compute a Quality Gate verdict (release, branch, or current main) |
+| `get_verdict` | Read the latest Quality Gate verdict (release, branch, or current main) |
 | `get_overview` | Current product gate state on main |
-| `get_traceability` | Requirement-to-test traceability matrix |
+| `get_traceability` | Requirement-to-test traceability matrix (release, branch, or current main) |
+| `session_progress` | Per-requirement progress of one intent session: coverage ladder, session attribution, readiness, next actions |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |
 | `link_requirement` | Link a test case to a requirement |
