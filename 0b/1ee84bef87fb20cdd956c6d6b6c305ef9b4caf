@@ -1,0 +1,26 @@
+internal/api/session_progress.go
+  s_700b78012ff0f7::t_3f727bf8e1d6cd 1-37
+internal/api/gate_test.go
+  s_700b78012ff0f7::t_e126272f0bcf62 1-158
+internal/api/session_progress_test.go
+  s_700b78012ff0f7::t_3b7a232020e006 1-104
+internal/api/gate.go
+  s_700b78012ff0f7::t_1453c3bdf1177f 39-40,45-47,56-57,67-68,76-88
+  s_700b78012ff0f7::t_5ab1b2a2312a66 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0b1ee84bef87fb20cdd956c6d6b6c305ef9b4caf",
+  "prompts": {},
+  "sessions": {
+    "s_700b78012ff0f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8765319-726a-4855-8530-008a9be06178",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
