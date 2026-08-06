@@ -86,5 +86,18 @@ claude mcp add tiden -- tiden-mcp-server
 | `create_test_run` | Create a run (status `new`) to report results into |
 | `abort_test_run` | Abort a run (terminal; skips live-doc sync) |
 | `capture_intent` | Distill a session's product decisions into a reviewable `intent/<date>-<slug>` branch (server-side distiller; may take a few minutes) |
+| `list_issues` | Captured errors for a product, newest activity first (status/environment/release/component/level/platform/period filters, paginated) |
+| `get_issue` | One issue with its most recent occurrence and symbolicated stack frames |
+| `list_issue_events` | An issue's individual occurrences with release + environment, newest first |
+| `get_issue_event` | One specific occurrence with symbolicated frames — for when the latest event is not the one you care about |
+| `get_issue_event_stats` | Occurrence counts over time, last-24h total, and the per-environment split (the only way to learn an issue's environment) |
+| `get_issue_fix_context` | Everything needed to fix one error in one call: frames, implicated repo files, environment split, and the covering tests of the requirements those files implement |
+| `list_release_issues` | Post-deploy regression check: issues first seen in a release, plus a count of all issues seen during it |
+| `set_issue_status` | Set an issue to unresolved, resolved, or ignored |
 
 All tools return compact JSON matching the Tiden public API response shapes.
+
+Occurrence payloads (the full raw event JSON an SDK sent) are omitted by default
+because they are large enough to swamp an agent's context. `get_issue`,
+`list_issue_events` and `get_issue_event` take `include_payload: true` when the
+symbolicated frames were not enough.
