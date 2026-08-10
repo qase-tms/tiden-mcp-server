@@ -33,6 +33,7 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerGetOverview(srv, client)
 	registerGetTraceability(srv, client)
 	registerSessionProgress(srv, client)
+	registerRiskAcceptances(srv, client)
 	registerCreateTest(srv, client)
 	registerUpdateTest(srv, client)
 	registerLinkRequirement(srv, client)
