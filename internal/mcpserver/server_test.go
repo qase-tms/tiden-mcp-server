@@ -46,6 +46,14 @@ var allExpectedTools = []string{
 	"create_test_run",
 	"abort_test_run",
 	"capture_intent",
+	"list_issues",
+	"get_issue",
+	"list_issue_events",
+	"get_issue_event",
+	"get_issue_event_stats",
+	"get_issue_fix_context",
+	"list_release_issues",
+	"set_issue_status",
 }
 
 // newTestServer creates an MCP server backed by a throwaway api.Client.
@@ -250,6 +258,17 @@ func TestToolRequiredFields(t *testing.T) {
 		"create_test_run":     {"product_id"},
 		"abort_test_run":      {"product_id", "run_seq"},
 		"capture_intent":      {"product_id", "transcript"},
+		// The issue tools are the first to get this right across the board:
+		// every genuinely optional argument carries ,omitempty, so only the
+		// arguments the handler itself guards show up as required.
+		"list_issues":           {"product_id"},
+		"get_issue":             {"id"},
+		"list_issue_events":     {"id"},
+		"get_issue_event":       {"issue_id", "event_id"},
+		"get_issue_event_stats": {"id"},
+		"get_issue_fix_context": {"product_id", "issue_id"},
+		"list_release_issues":   {"release_id"},
+		"set_issue_status":      {"id", "status"},
 	}
 
 	found := map[string]bool{}
