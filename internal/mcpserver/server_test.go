@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -104,6 +105,50 @@ func TestToolRegistry(t *testing.T) {
 	// No unexpected extras.
 	if len(registered) != len(allExpectedTools) {
 		t.Errorf("expected %d tools, got %d; registered: %v", len(allExpectedTools), len(registered), registered)
+	}
+}
+
+// TestRiskAcceptanceToolDescription freezes the complete pricing rubric in
+// the top-level description. Some MCP clients show the tool description but
+// collapse nested input-schema descriptions, so keeping R1-R5 only on the
+// criterion property would leave an agent unable to choose a valid reason.
+func TestRiskAcceptanceToolDescription(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	var description string
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if tool.Name == "record_risk_acceptances" {
+			description = tool.Description
+			break
+		}
+	}
+	if description == "" {
+		t.Fatal("record_risk_acceptances tool is not registered")
+	}
+	for _, phrase := range []string{
+		"R1 — unverifiable in this environment",
+		"R2 — blocked by an external dependency",
+		"R3 — a human-drawn task boundary",
+		"R4 — no user-observable consequence",
+		"R5 — known-broken verification infrastructure",
+		"Volume, ownership, effort",
+	} {
+		if !strings.Contains(description, phrase) {
+			t.Errorf("description omits %q: %q", phrase, description)
+		}
 	}
 }
 

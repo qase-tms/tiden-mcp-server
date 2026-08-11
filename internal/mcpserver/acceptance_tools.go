@@ -30,6 +30,7 @@ func registerRecordRiskAcceptances(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "record_risk_acceptances",
 		Description: "Record one intent session's risk acceptances and test deferrals — the priced exceptions that let `tiden intent close` exit despite open coverage. " +
+			"The only admissible criteria are: R1 — unverifiable in this environment; R2 — blocked by an external dependency; R3 — a human-drawn task boundary, whose evidence MUST quote that boundary; R4 — no user-observable consequence; R5 — known-broken verification infrastructure. Volume, ownership, effort, and a bare 'out of scope' are not criteria and will be refused. " +
 			"This does NOT close the session, start one, or replace `tiden intent close`: the intent lifecycle (start/refine/close) needs local git state and the CLI's session record, neither of which this server has — call this only against a session the CLI already opened, to hand it a disposition it can act on. " +
 			"Validation here is structural only (required fields present, at least one acceptance or one deferral); the server owns the real rules (known criterion, non-empty evidence, known follow-up kind, refs that resolve on the branch) and its refusal message says exactly what is wrong — read it rather than guessing. " +
 			"A re-call with the same session_id and requirement set REPLACES that call's rows rather than stacking a contradicting one, so correcting a criterion is safe to retry. " +
