@@ -74,7 +74,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `get_verdict` | Read the latest Quality Gate verdict (release, branch, or current main) |
 | `get_overview` | Current product gate state on main |
 | `get_traceability` | Requirement-to-test traceability matrix (release, branch, or current main) |
-| `session_progress` | Per-requirement progress of one intent session: coverage ladder, session attribution, readiness, next actions |
+| `session_progress` | Per-requirement progress of one intent session: coverage ladder, session attribution, readiness, next actions (does not start/refine/close the session; that stays CLI-only) |
 | `record_risk_acceptances` | Record one intent session's risk acceptances and test deferrals (does not close the session; that stays CLI-only) |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |

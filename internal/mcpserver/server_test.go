@@ -375,6 +375,57 @@ func TestToolRequiredFields(t *testing.T) {
 	}
 }
 
+// TestIntentLifecycleStaysCLIOnly guards a requirement that has already
+// reached one tool of a pair without its sibling once (session_progress
+// shipped before the CLI-only wording was required, and record_risk_acceptances
+// got it while session_progress did not). Every tool that touches intent-session
+// state must tell the calling agent that starting/refining/closing the session
+// stays CLI-only, so add its name here whenever a new one is introduced.
+func TestIntentLifecycleStaysCLIOnly(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	serverDone := make(chan error, 1)
+	go func() {
+		serverDone <- srv.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	toolsNeedingNote := map[string]bool{
+		"session_progress":        true,
+		"record_risk_acceptances": true,
+	}
+
+	found := map[string]bool{}
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if !toolsNeedingNote[tool.Name] {
+			continue
+		}
+		found[tool.Name] = true
+		for _, marker := range []string{"intent lifecycle", "neither of which this server has"} {
+			if !strings.Contains(tool.Description, marker) {
+				t.Errorf("%s: description must state that the intent lifecycle (start/refine/close) stays CLI-only (missing %q); got %q", tool.Name, marker, tool.Description)
+			}
+		}
+	}
+	for name := range toolsNeedingNote {
+		if !found[name] {
+			t.Errorf("tool %q not found while checking CLI-only note", name)
+		}
+	}
+}
+
 func equalStringSlices(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
