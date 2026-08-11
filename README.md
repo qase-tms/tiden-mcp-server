@@ -75,6 +75,8 @@ claude mcp add tiden -- tiden-mcp-server
 | `get_overview` | Current product gate state on main |
 | `get_traceability` | Requirement-to-test traceability matrix (release, branch, or current main) |
 | `session_progress` | Per-requirement progress of one intent session: coverage ladder, session attribution, readiness, next actions |
+| `get_session_progress` | Alias for `session_progress`; intent lifecycle mutations remain CLI-only because they require local git and session state |
+| `record_risk_acceptances` | Persist structured R1-R5 decisions and proposed-test deferrals for an intent session |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |
 | `link_requirement` | Link a test case to a requirement |
