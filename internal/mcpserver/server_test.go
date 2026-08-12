@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -35,6 +36,7 @@ var allExpectedTools = []string{
 	"get_overview",
 	"get_traceability",
 	"session_progress",
+	"record_risk_acceptances",
 	"create_test",
 	"update_test",
 	"link_requirement",
@@ -106,6 +108,50 @@ func TestToolRegistry(t *testing.T) {
 	}
 }
 
+// TestRiskAcceptanceToolDescription freezes the complete pricing rubric in
+// the top-level description. Some MCP clients show the tool description but
+// collapse nested input-schema descriptions, so keeping R1-R5 only on the
+// criterion property would leave an agent unable to choose a valid reason.
+func TestRiskAcceptanceToolDescription(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	var description string
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if tool.Name == "record_risk_acceptances" {
+			description = tool.Description
+			break
+		}
+	}
+	if description == "" {
+		t.Fatal("record_risk_acceptances tool is not registered")
+	}
+	for _, phrase := range []string{
+		"R1 — unverifiable in this environment",
+		"R2 — blocked by an external dependency",
+		"R3 — a human-drawn task boundary",
+		"R4 — no user-observable consequence",
+		"R5 — known-broken verification infrastructure",
+		"Volume, ownership, effort",
+	} {
+		if !strings.Contains(description, phrase) {
+			t.Errorf("description omits %q: %q", phrase, description)
+		}
+	}
+}
+
 // TestInputSchemaUnmarshal verifies that the JSON input schema for key tools
 // can be unmarshalled correctly - catching field name mismatches early.
 func TestInputSchemaUnmarshal(t *testing.T) {
@@ -152,6 +198,10 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 		{
 			tool:  "session_progress",
 			input: `{"product_id": "prod-123", "session_id": "3f0e8c1a-2b4d-4e6f-8a9b-0c1d2e3f4a5b", "requirement_ids": ["req-1", "req-2"], "intent_branch": "intent/2026-08-05-x"}`,
+		},
+		{
+			tool:  "record_risk_acceptances",
+			input: `{"product_id": "prod-123", "requirement_id": "draft-1", "intent_branch": "intent/2026-08-05-x", "session_id": "3f0e8c1a-2b4d-4e6f-8a9b-0c1d2e3f4a5b", "acceptances": [{"requirement_refs": ["FEED-49"], "criterion": "R1", "evidence": "no sandbox to run this against", "follow_up": "none"}], "proposed_test_requirement_refs": ["FEED-34"]}`,
 		},
 		{
 			tool:  "list_test_runs",
@@ -227,37 +277,38 @@ func TestToolRequiredFields(t *testing.T) {
 	defer func() { _ = session.Close() }()
 
 	wantRequired := map[string][]string{
-		"whoami":              {},
-		"list_workspaces":     {},
-		"list_products":       {},
-		"list_requirements":   {"product_id"},
-		"get_requirement":     {"id"},
-		"create_requirement":  {"product_id", "title"},
-		"update_requirement":  {"id"},
-		"list_tests":          {"product_id"},
-		"get_test":            {"id"},
-		"list_branches":       {"product_id"},
-		"create_branch":       {"product_id", "name"},
-		"get_merge_preview":   {"branch_id"},
-		"list_components":     {"product_id"},
-		"list_environments":   {"product_id"},
-		"list_releases":       {"product_id"},
-		"gate_check":          {"product_id"},
-		"get_verdict":         {"product_id"},
-		"get_overview":        {"product_id"},
-		"get_traceability":    {"product_id"},
-		"session_progress":    {"product_id", "session_id", "requirement_ids"},
-		"create_test":         {"product_id", "title"},
-		"update_test":         {"id"},
-		"link_requirement":    {"test_id", "requirement_id"},
-		"list_test_runs":      {"product_id"},
-		"get_test_run":        {"product_id", "run_seq"},
-		"get_run_results":     {"product_id", "run_seq"},
-		"report_test_results": {"product_id", "run_seq", "results"},
-		"complete_test_run":   {"product_id", "run_seq"},
-		"create_test_run":     {"product_id"},
-		"abort_test_run":      {"product_id", "run_seq"},
-		"capture_intent":      {"product_id", "transcript"},
+		"whoami":                  {},
+		"list_workspaces":         {},
+		"list_products":           {},
+		"list_requirements":       {"product_id"},
+		"get_requirement":         {"id"},
+		"create_requirement":      {"product_id", "title"},
+		"update_requirement":      {"id"},
+		"list_tests":              {"product_id"},
+		"get_test":                {"id"},
+		"list_branches":           {"product_id"},
+		"create_branch":           {"product_id", "name"},
+		"get_merge_preview":       {"branch_id"},
+		"list_components":         {"product_id"},
+		"list_environments":       {"product_id"},
+		"list_releases":           {"product_id"},
+		"gate_check":              {"product_id"},
+		"get_verdict":             {"product_id"},
+		"get_overview":            {"product_id"},
+		"get_traceability":        {"product_id"},
+		"session_progress":        {"product_id", "session_id", "requirement_ids"},
+		"record_risk_acceptances": {"product_id", "requirement_id", "intent_branch", "session_id"},
+		"create_test":             {"product_id", "title"},
+		"update_test":             {"id"},
+		"link_requirement":        {"test_id", "requirement_id"},
+		"list_test_runs":          {"product_id"},
+		"get_test_run":            {"product_id", "run_seq"},
+		"get_run_results":         {"product_id", "run_seq"},
+		"report_test_results":     {"product_id", "run_seq", "results"},
+		"complete_test_run":       {"product_id", "run_seq"},
+		"create_test_run":         {"product_id"},
+		"abort_test_run":          {"product_id", "run_seq"},
+		"capture_intent":          {"product_id", "transcript"},
 		// The issue tools are the first to get this right across the board:
 		// every genuinely optional argument carries ,omitempty, so only the
 		// arguments the handler itself guards show up as required.
@@ -320,6 +371,57 @@ func TestToolRequiredFields(t *testing.T) {
 	for name := range wantRequired {
 		if !found[name] {
 			t.Errorf("tool %q not found while checking required fields", name)
+		}
+	}
+}
+
+// TestIntentLifecycleStaysCLIOnly guards a requirement that has already
+// reached one tool of a pair without its sibling once (session_progress
+// shipped before the CLI-only wording was required, and record_risk_acceptances
+// got it while session_progress did not). Every tool that touches intent-session
+// state must tell the calling agent that starting/refining/closing the session
+// stays CLI-only, so add its name here whenever a new one is introduced.
+func TestIntentLifecycleStaysCLIOnly(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	serverDone := make(chan error, 1)
+	go func() {
+		serverDone <- srv.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	toolsNeedingNote := map[string]bool{
+		"session_progress":        true,
+		"record_risk_acceptances": true,
+	}
+
+	found := map[string]bool{}
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if !toolsNeedingNote[tool.Name] {
+			continue
+		}
+		found[tool.Name] = true
+		for _, marker := range []string{"intent lifecycle", "neither of which this server has"} {
+			if !strings.Contains(tool.Description, marker) {
+				t.Errorf("%s: description must state that the intent lifecycle (start/refine/close) stays CLI-only (missing %q); got %q", tool.Name, marker, tool.Description)
+			}
+		}
+	}
+	for name := range toolsNeedingNote {
+		if !found[name] {
+			t.Errorf("tool %q not found while checking CLI-only note", name)
 		}
 	}
 }
