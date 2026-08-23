@@ -80,6 +80,40 @@ func TestRecordSessionRiskAcceptancesOmitsEmptyCollections(t *testing.T) {
 	}
 }
 
+// TestRecordSessionRiskAcceptancesOmitsRequirementIDWhenAbsent pins that an
+// empty RequirementID (the v2 session-judgements path, tiden-app#398) is
+// omitted from the request body rather than sent as "" — the server tells
+// "absent" (write to the session record's judgements) apart from "present"
+// (legacy draft path) by whether the JSON key is there at all.
+func TestRecordSessionRiskAcceptancesOmitsRequirementIDWhenAbsent(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := io.ReadAll(r.Body)
+		gotBody = string(data)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"acceptancesRecorded": 1, "deferredRequirements": 0, "replacedRows": 0}`))
+	}))
+	defer srv.Close()
+
+	client := newTestClient(srv.URL)
+	if _, err := client.RecordSessionRiskAcceptances(context.Background(), "p1", RecordSessionRiskAcceptancesRequest{
+		IntentBranch: "intent/2026-08-05-x",
+		SessionID:    "s1",
+		Acceptances: []SessionRiskAcceptance{{
+			RequirementRefs: []string{"FEED-49"},
+			Criterion:       "R1",
+			Evidence:        "no sandbox to run this against",
+			FollowUp:        "none",
+		}},
+	}); err != nil {
+		t.Fatalf("RecordSessionRiskAcceptances: %v", err)
+	}
+	wantBody := `{"intentBranch":"intent/2026-08-05-x","sessionId":"s1","acceptances":[{"requirementRefs":["FEED-49"],"criterion":"R1","evidence":"no sandbox to run this against","followUp":"none"}]}`
+	if gotBody != wantBody {
+		t.Errorf("request body = %s, want %s", gotBody, wantBody)
+	}
+}
+
 // TestRecordSessionRiskAcceptances_ServerRefusalSurfaced pins that a
 // structural refusal (e.g. unknown criterion, missing requirement_id) comes
 // back as an *APIError whose Message is the server's own text — the refusal

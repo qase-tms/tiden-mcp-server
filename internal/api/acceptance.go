@@ -20,9 +20,13 @@ type SessionRiskAcceptance struct {
 // /v1/products/{productId}/quality-gate:session-acceptances. ProductID rides
 // the URL (grpc-gateway path capture), not the body.
 type RecordSessionRiskAcceptancesRequest struct {
-	// RequirementID is the session's draft requirement (branch-local on
-	// IntentBranch) — the row the artifacts land on.
-	RequirementID string `json:"requirementId"`
+	// RequirementID (v2, optional): the session's draft requirement
+	// (branch-local on IntentBranch) — the legacy write path, kept for older
+	// CLIs. Empty is omitted from the request body (not sent as ""): the
+	// server then requires the session record (intent_sessions) to already
+	// exist and writes acceptances/deferrals to intent_session_judgements
+	// instead of onto a draft's provenance.
+	RequirementID string `json:"requirementId,omitempty"`
 	// IntentBranch is the session's Tiden branch; must be non-empty and not "main".
 	IntentBranch string `json:"intentBranch"`
 	// SessionID is the client-generated intent session UUID.
