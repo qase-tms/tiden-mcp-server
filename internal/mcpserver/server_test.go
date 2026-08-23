@@ -194,6 +194,47 @@ func TestRecordRiskAcceptancesRequirementIDOptional(t *testing.T) {
 	}
 }
 
+// TestCaptureIntentDescriptionMentionsSessionSettlement pins that
+// capture_intent's description tells the agent to pass session_id:
+// tiden-app#398 made the server record a machine-readable settlement on
+// that session's record, which is what makes a distillation visible to the
+// intent loop's close gate and analytics.
+func TestCaptureIntentDescriptionMentionsSessionSettlement(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	var description string
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if tool.Name == "capture_intent" {
+			description = tool.Description
+			break
+		}
+	}
+	if description == "" {
+		t.Fatal("capture_intent tool is not registered")
+	}
+	for _, phrase := range []string{
+		"records a machine-readable settlement",
+		"always pass session_id when one exists",
+	} {
+		if !strings.Contains(description, phrase) {
+			t.Errorf("description omits %q: %q", phrase, description)
+		}
+	}
+}
+
 // TestInputSchemaUnmarshal verifies that the JSON input schema for key tools
 // can be unmarshalled correctly - catching field name mismatches early.
 func TestInputSchemaUnmarshal(t *testing.T) {

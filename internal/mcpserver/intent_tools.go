@@ -32,7 +32,8 @@ func registerCaptureIntent(srv *mcp.Server, client *api.Client) {
 		Description: "Distill this session's product decisions into a reviewable Tiden intent branch. " +
 			"Call at the end of a working session with a summary of user decisions. " +
 			"May take a few minutes. If the call times out, the branch may still have been written — " +
-			"retry with the same slug; the server reuses the same-day intent branch, so a retry converges instead of duplicating.",
+			"retry with the same slug; the server reuses the same-day intent branch, so a retry converges instead of duplicating. " +
+			"When session_id is passed, the server also records a machine-readable settlement on that session's record, which is what makes this distillation visible to the intent loop's close gate and analytics — always pass session_id when one exists.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args captureIntentArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
