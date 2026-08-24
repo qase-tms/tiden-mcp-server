@@ -10,7 +10,7 @@ import (
 )
 
 // TestRecordSessionRiskAcceptances pins the exact wire contract: POST path
-// and body shape (mirroring tiden-cli's internal/api.SessionRiskAcceptance so
+// and body shape (mirroring the tiden CLI's client so
 // the two clients cannot drift), and full response decode.
 func TestRecordSessionRiskAcceptances(t *testing.T) {
 	var gotBody string
@@ -75,6 +75,40 @@ func TestRecordSessionRiskAcceptancesOmitsEmptyCollections(t *testing.T) {
 		t.Fatalf("RecordSessionRiskAcceptances: %v", err)
 	}
 	wantBody := `{"requirementId":"draft-1","intentBranch":"intent/2026-08-05-x","sessionId":"s1","proposedTestRequirementRefs":["FEED-34"]}`
+	if gotBody != wantBody {
+		t.Errorf("request body = %s, want %s", gotBody, wantBody)
+	}
+}
+
+// TestRecordSessionRiskAcceptancesOmitsRequirementIDWhenAbsent pins that an
+// empty RequirementID (the session-judgements write path) is
+// omitted from the request body rather than sent as "" — the server tells
+// "absent" (write to the session record's judgements) apart from "present"
+// (legacy draft path) by whether the JSON key is there at all.
+func TestRecordSessionRiskAcceptancesOmitsRequirementIDWhenAbsent(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := io.ReadAll(r.Body)
+		gotBody = string(data)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"acceptancesRecorded": 1, "deferredRequirements": 0, "replacedRows": 0}`))
+	}))
+	defer srv.Close()
+
+	client := newTestClient(srv.URL)
+	if _, err := client.RecordSessionRiskAcceptances(context.Background(), "p1", RecordSessionRiskAcceptancesRequest{
+		IntentBranch: "intent/2026-08-05-x",
+		SessionID:    "s1",
+		Acceptances: []SessionRiskAcceptance{{
+			RequirementRefs: []string{"FEED-49"},
+			Criterion:       "R1",
+			Evidence:        "no sandbox to run this against",
+			FollowUp:        "none",
+		}},
+	}); err != nil {
+		t.Fatalf("RecordSessionRiskAcceptances: %v", err)
+	}
+	wantBody := `{"intentBranch":"intent/2026-08-05-x","sessionId":"s1","acceptances":[{"requirementRefs":["FEED-49"],"criterion":"R1","evidence":"no sandbox to run this against","followUp":"none"}]}`
 	if gotBody != wantBody {
 		t.Errorf("request body = %s, want %s", gotBody, wantBody)
 	}

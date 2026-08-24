@@ -152,6 +152,89 @@ func TestRiskAcceptanceToolDescription(t *testing.T) {
 	}
 }
 
+// TestRecordRiskAcceptancesRequirementIDOptional pins that
+// record_risk_acceptances' description explains both write modes now that
+// the server treats requirement_id as optional: the legacy draft
+// path when it is supplied, and the session-judgements path (with its
+// INTENT_SESSION_NOT_FOUND failure) when it is omitted.
+func TestRecordRiskAcceptancesRequirementIDOptional(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	var description string
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if tool.Name == "record_risk_acceptances" {
+			description = tool.Description
+			break
+		}
+	}
+	if description == "" {
+		t.Fatal("record_risk_acceptances tool is not registered")
+	}
+	for _, phrase := range []string{
+		"requirement_id is now OPTIONAL",
+		"INTENT_SESSION_NOT_FOUND",
+		"older CLIs and drafts should keep passing requirement_id",
+	} {
+		if !strings.Contains(description, phrase) {
+			t.Errorf("description omits %q: %q", phrase, description)
+		}
+	}
+}
+
+// TestCaptureIntentDescriptionMentionsSessionSettlement pins that
+// capture_intent's description tells the agent to pass session_id:
+// the server records a machine-readable settlement on
+// that session's record, which is what makes a distillation visible to the
+// intent loop's close gate and analytics.
+func TestCaptureIntentDescriptionMentionsSessionSettlement(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	var description string
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if tool.Name == "capture_intent" {
+			description = tool.Description
+			break
+		}
+	}
+	if description == "" {
+		t.Fatal("capture_intent tool is not registered")
+	}
+	for _, phrase := range []string{
+		"records a machine-readable settlement",
+		"always pass session_id when one exists",
+	} {
+		if !strings.Contains(description, phrase) {
+			t.Errorf("description omits %q: %q", phrase, description)
+		}
+	}
+}
+
 // TestInputSchemaUnmarshal verifies that the JSON input schema for key tools
 // can be unmarshalled correctly - catching field name mismatches early.
 func TestInputSchemaUnmarshal(t *testing.T) {
@@ -297,7 +380,7 @@ func TestToolRequiredFields(t *testing.T) {
 		"get_overview":            {"product_id"},
 		"get_traceability":        {"product_id"},
 		"session_progress":        {"product_id", "session_id", "requirement_ids"},
-		"record_risk_acceptances": {"product_id", "requirement_id", "intent_branch", "session_id"},
+		"record_risk_acceptances": {"product_id", "intent_branch", "session_id"},
 		"create_test":             {"product_id", "title"},
 		"update_test":             {"id"},
 		"link_requirement":        {"test_id", "requirement_id"},

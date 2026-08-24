@@ -19,7 +19,7 @@ type sessionRiskAcceptanceArg struct {
 
 type recordRiskAcceptancesArgs struct {
 	ProductID                   string                     `json:"product_id"                              jsonschema:"Product ID (required)."`
-	RequirementID               string                     `json:"requirement_id"                          jsonschema:"The intent session's draft requirement UUID — the row these artifacts are recorded on (required). Not any other requirement."`
+	RequirementID               string                     `json:"requirement_id,omitempty"                jsonschema:"The intent session's draft requirement UUID — the row these artifacts are recorded on (optional). Not any other requirement. Pass it to use the legacy draft path unchanged; omit it to write to the session record's judgements instead — the session (an intent_sessions row) must already exist server-side, created by the tiden CLI, or the call fails with INTENT_SESSION_NOT_FOUND."`
 	IntentBranch                string                     `json:"intent_branch"                           jsonschema:"The session's Tiden branch name; must not be 'main' (required)."`
 	SessionID                   string                     `json:"session_id"                              jsonschema:"The intent session UUID that opened this branch (required)."`
 	Acceptances                 []sessionRiskAcceptanceArg `json:"acceptances,omitempty"                   jsonschema:"Priced risk acceptances (the R1-R5 rubric). Omit if this call only records test deferrals — but then proposed_test_requirement_refs must be non-empty."`
@@ -31,16 +31,14 @@ func registerRecordRiskAcceptances(srv *mcp.Server, client *api.Client) {
 		Name: "record_risk_acceptances",
 		Description: "Record one intent session's risk acceptances and test deferrals — the priced exceptions that let `tiden intent close` exit despite open coverage. " +
 			"The only admissible criteria are: R1 — unverifiable in this environment; R2 — blocked by an external dependency; R3 — a human-drawn task boundary, whose evidence MUST quote that boundary; R4 — no user-observable consequence; R5 — known-broken verification infrastructure. Volume, ownership, effort, and a bare 'out of scope' are not criteria and will be refused. " +
+			"requirement_id is now OPTIONAL. Pass it (the draft requirement UUID) to use the legacy path, which writes onto that draft's provenance unchanged. Omit it to write directly onto the session record's judgements instead — but then the session must already exist server-side as an intent_sessions row (created by the tiden CLI) or the call fails with INTENT_SESSION_NOT_FOUND; older CLIs and drafts should keep passing requirement_id. " +
 			"This does NOT close the session, start one, or replace `tiden intent close`: the intent lifecycle (start/refine/close) needs local git state and the CLI's session record, neither of which this server has — call this only against a session the CLI already opened, to hand it a disposition it can act on. " +
 			"Validation here is structural only (required fields present, at least one acceptance or one deferral); the server owns the real rules (known criterion, non-empty evidence, known follow-up kind, refs that resolve on the branch) and its refusal message says exactly what is wrong — read it rather than guessing. " +
 			"A re-call with the same session_id and requirement set REPLACES that call's rows rather than stacking a contradicting one, so correcting a criterion is safe to retry. " +
-			"Ordering note for anyone also writing this draft's sources in the same flow: this call rewrites the draft's whole source array, so write it FIRST and re-fetch the requirement before building any other sources write to the same draft — otherwise that write silently erases what this call just recorded.",
+			"Ordering note for anyone also writing this draft's sources in the same flow (requirement_id provided): this call rewrites the draft's whole source array, so write it FIRST and re-fetch the requirement before building any other sources write to the same draft — otherwise that write silently erases what this call just recorded.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args recordRiskAcceptancesArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
-		}
-		if args.RequirementID == "" {
-			return toolError(errMissingField("requirement_id"))
 		}
 		if args.IntentBranch == "" {
 			return toolError(errMissingField("intent_branch"))

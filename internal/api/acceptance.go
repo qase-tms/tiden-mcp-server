@@ -4,7 +4,7 @@ import "context"
 
 // SessionRiskAcceptance is one priced exception in a
 // RecordSessionRiskAcceptances call, mirroring api.v1.SessionRiskAcceptance
-// (tiden-app#365) and tiden-cli's internal/api.SessionRiskAcceptance — the
+// and the tiden CLI's own client shape — the
 // two client shapes are kept byte-identical on purpose so they cannot drift.
 // RequirementRefs are exactly as the caller typed them ("<CODE>-<N>" or a
 // canonical lowercase UUID); the server resolves them against the intent
@@ -20,9 +20,13 @@ type SessionRiskAcceptance struct {
 // /v1/products/{productId}/quality-gate:session-acceptances. ProductID rides
 // the URL (grpc-gateway path capture), not the body.
 type RecordSessionRiskAcceptancesRequest struct {
-	// RequirementID is the session's draft requirement (branch-local on
-	// IntentBranch) — the row the artifacts land on.
-	RequirementID string `json:"requirementId"`
+	// RequirementID (v2, optional): the session's draft requirement
+	// (branch-local on IntentBranch) — the legacy write path, kept for older
+	// CLIs. Empty is omitted from the request body (not sent as ""): the
+	// server then requires the session record (intent_sessions) to already
+	// exist and writes acceptances/deferrals to intent_session_judgements
+	// instead of onto a draft's provenance.
+	RequirementID string `json:"requirementId,omitempty"`
 	// IntentBranch is the session's Tiden branch; must be non-empty and not "main".
 	IntentBranch string `json:"intentBranch"`
 	// SessionID is the client-generated intent session UUID.
@@ -49,15 +53,15 @@ type RecordSessionRiskAcceptancesResponse struct {
 }
 
 // RecordSessionRiskAcceptances records one intent session's risk acceptances
-// and test deferrals as agent_artifact rows on the session draft
-// (tiden-app#365). Validation is structural only — the server never judges
+// and test deferrals as agent_artifact rows on the session draft.
+// Validation is structural only — the server never judges
 // whether a reason is a good one; a rejection's Message (surfaced via
 // APIError, forwarded verbatim by the caller) is what teaches the agent.
 //
 // # Ordering constraint (load-bearing for any future caller that also writes sources)
 //
 // This RPC rewrites the draft's whole `sources` array. A caller that also
-// writes sources to the same draft (as tiden-cli's `intent close` does, in
+// writes sources to the same draft (as the tiden CLI's `intent close` does, in
 // its own PUT) MUST call this FIRST and RE-FETCH the requirement before
 // building that write — a request assembled from a snapshot taken before
 // this call silently erases the rows this call wrote. This package has no
