@@ -10,3 +10,5 @@ Before opening a pull request:
 - Keep stdout reserved for the MCP protocol when changing server runtime code.
 
 The API contract mirrors the Tiden public REST API. Keep request and response models hand-written and limited to the MCP tool surface.
+
+`CHANGELOG.md` follows the grammar pinned in [`docs/changelog-spec.md`](docs/changelog-spec.md) — the release automation parses it, so entries must conform exactly.
