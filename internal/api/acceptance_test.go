@@ -10,7 +10,7 @@ import (
 )
 
 // TestRecordSessionRiskAcceptances pins the exact wire contract: POST path
-// and body shape (mirroring tiden-cli's internal/api.SessionRiskAcceptance so
+// and body shape (mirroring the tiden CLI's client so
 // the two clients cannot drift), and full response decode.
 func TestRecordSessionRiskAcceptances(t *testing.T) {
 	var gotBody string
@@ -81,7 +81,7 @@ func TestRecordSessionRiskAcceptancesOmitsEmptyCollections(t *testing.T) {
 }
 
 // TestRecordSessionRiskAcceptancesOmitsRequirementIDWhenAbsent pins that an
-// empty RequirementID (the v2 session-judgements path, tiden-app#398) is
+// empty RequirementID (the session-judgements write path) is
 // omitted from the request body rather than sent as "" — the server tells
 // "absent" (write to the session record's judgements) apart from "present"
 // (legacy draft path) by whether the JSON key is there at all.

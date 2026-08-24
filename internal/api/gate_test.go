@@ -113,7 +113,7 @@ func TestGetTraceabilityBranchQueryAndDecode(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"matrix": {"components": [{
 		  "componentId": "c1", "name": "backend", "status": "VERDICT_STATUS_PASS",
-		  "repository": "qase-tms/tiden-app",
+		  "repository": "example-org/checkout",
 		  "requirements": [{
 		    "requirementId": "r1", "display": "QA-57", "title": "Session progress",
 		    "parentId": "r0", "branchStatus": "modified", "coverage": "verified",
@@ -128,7 +128,7 @@ func TestGetTraceabilityBranchQueryAndDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTraceability: %v", err)
 	}
-	if len(m.Components) != 1 || m.Components[0].Repository != "qase-tms/tiden-app" {
+	if len(m.Components) != 1 || m.Components[0].Repository != "example-org/checkout" {
 		t.Errorf("components = %+v", m.Components)
 	}
 	req := m.Components[0].Requirements[0]

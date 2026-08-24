@@ -154,7 +154,7 @@ func TestRiskAcceptanceToolDescription(t *testing.T) {
 
 // TestRecordRiskAcceptancesRequirementIDOptional pins that
 // record_risk_acceptances' description explains both write modes now that
-// tiden-app#398 made requirement_id optional server-side: the legacy draft
+// the server treats requirement_id as optional: the legacy draft
 // path when it is supplied, and the session-judgements path (with its
 // INTENT_SESSION_NOT_FOUND failure) when it is omitted.
 func TestRecordRiskAcceptancesRequirementIDOptional(t *testing.T) {
@@ -196,7 +196,7 @@ func TestRecordRiskAcceptancesRequirementIDOptional(t *testing.T) {
 
 // TestCaptureIntentDescriptionMentionsSessionSettlement pins that
 // capture_intent's description tells the agent to pass session_id:
-// tiden-app#398 made the server record a machine-readable settlement on
+// the server records a machine-readable settlement on
 // that session's record, which is what makes a distillation visible to the
 // intent loop's close gate and analytics.
 func TestCaptureIntentDescriptionMentionsSessionSettlement(t *testing.T) {
