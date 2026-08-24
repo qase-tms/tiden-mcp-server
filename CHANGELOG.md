@@ -1,0 +1,58 @@
+# Changelog
+
+All notable changes to `tiden-mcp-server` are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.2.0] - 2026-08-24
+
+### Added
+
+- Issue tools: `list_issues`, `get_issue`, `list_issue_events`,
+  `get_issue_event`, `get_issue_event_stats`, `get_issue_fix_context`,
+  `list_release_issues`, `set_issue_status` (#6).
+- `session_progress` tool: per-requirement progress of an intent session —
+  coverage ladder, session attribution, readiness, and next actions; the
+  gate tools (`gate_check`, `get_verdict`, `get_traceability`) can now scope
+  to a branch (#8).
+- `record_risk_acceptances` tool: record an intent session's risk
+  acceptances and test deferrals, exposing the full risk-acceptance rubric
+  (#11).
+
+### Changed
+
+- `record_risk_acceptances` no longer requires `requirement_id` (#11).
+
+### Fixed
+
+- Removed references to other repositories' PR numbers from public code
+  comments (#12).
+
+## [0.1.0] - 2026-07-23
+
+### Added
+
+- Initial release: a stdio MCP server exposing Tiden's public REST API as
+  tools — workspaces, products, requirements, tests, branches, merge
+  previews, components, environments, releases, and Quality Gate
+  verdicts/traceability.
+- `get_product` tool: fetch a product by id (#1).
+- Seven test-run tools: `create_test_run`, `list_test_runs`, `get_test_run`,
+  `get_run_results`, `report_test_results`, `complete_test_run`,
+  `abort_test_run` (#2).
+- `capture_intent` tool: distill a session's product decisions into a
+  reviewable intent branch (#5).
+
+### Fixed
+
+- `list_components` exposes each component's repository scope; optional
+  tool arguments across all tools are now schema-optional, with caps and
+  clamps applied to list results (#3).
+- `list_tests` and `list_requirements` no longer truncate — results are now
+  fetched across all pages (#4).
+
+[0.2.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/qase-tms/tiden-mcp-server/releases/tag/v0.1.0
