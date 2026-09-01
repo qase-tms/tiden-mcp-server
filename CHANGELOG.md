@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Executable changelog contract tests (`internal/changelogcontract`): a reference
+  parser, ported from tiden-cli, that falsifies this repo's `CHANGELOG.md` against
+  the grammar in `docs/changelog-spec.md` — pending-version derivation and
+  version-section extraction, with the real `CHANGELOG.md` checked as a subcase.
+
 ## [0.2.0] - 2026-08-24
 
 ### Added
