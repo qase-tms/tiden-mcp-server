@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gate_check` and `get_verdict` no longer drop the fields that say whose work a
+  requirement is and what the verdict left out. The tool answer is decoded into
+  this repo's model and re-encoded from it, so a field absent from the model is
+  silently discarded between the server and the agent: the per-provenance counts,
+  the sentences naming what was excluded from the grading, the divergence flag,
+  and each requirement's `touched` provenance and `uncovered_on_main` baseline
+  all vanished on the way through. An agent that cannot tell its own work from
+  adjacent debt reads the whole verdict as somebody else's problem, which is the
+  failure the branch scope work exists to remove — reappearing one layer down.
+  The two new scope absences (`unmeasured`, `retrieval_only`) also arrive intact,
+  and a round-trip test refuses any future field that does not survive.
+
 ## [0.3.0] - 2026-09-03
 
 ### Changed

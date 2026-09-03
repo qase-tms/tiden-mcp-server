@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -154,5 +155,70 @@ func TestGetVerdictReleaseQuery(t *testing.T) {
 	client := newTestClient(srv.URL)
 	if _, err := client.GetVerdict(context.Background(), "p1", "release", "rel-1", ""); err != nil {
 		t.Fatalf("GetVerdict: %v", err)
+	}
+}
+
+// TestGetVerdict_ScopeAndProvenanceSurviveTheRoundTrip pins that a field the
+// server publishes reaches the agent. This model is what a tool answer is
+// decoded into and re-encoded from, so a field absent here is silently dropped:
+// the exclusion counts, the sentences that name them, and the per-requirement
+// provenance would all vanish between the server and the agent, which is
+// exactly the "the verdict never reached the reader" failure the branch scope
+// work exists to fix — one layer further down.
+func TestGetVerdict_ScopeAndProvenanceSurviveTheRoundTrip(t *testing.T) {
+	const body = `{"verdict":{"id":"v1","productId":"p1","scope":"VERDICT_SCOPE_BRANCH",
+		"status":"VERDICT_STATUS_NOT_VERIFIED",
+		"scopeInfo":{"source":"unmeasured","touchedRequirements":0,"touchedComponents":0,
+			"bySource":{"changed":1,"directory_not_scoped":37,"retrieval_not_scoped":28},
+			"notes":["37 requirement(s) are anchored in the same folders as this branch's changes but were not graded."],
+			"diverged":true},
+		"subjects":[{"subjectType":"component","subjectId":"c1","name":"Workspace","status":"VERDICT_STATUS_NOT_VERIFIED",
+			"requirements":[{"requirementId":"r1","display":"QASE-716","state":"no_test","touched":"neighbour","uncoveredOnMain":true}]}]}}`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, body)
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "tok")
+	v, err := c.GetVerdict(context.Background(), "p1", "branch", "", "intent/x")
+	if err != nil {
+		t.Fatalf("GetVerdict: %v", err)
+	}
+	si := v.ScopeInfo
+	if si == nil {
+		t.Fatal("scopeInfo was dropped entirely")
+	}
+	if si.Source != "unmeasured" {
+		t.Errorf("source = %q, want the named absence", si.Source)
+	}
+	if si.BySource["directory_not_scoped"] != 37 || si.BySource["retrieval_not_scoped"] != 28 {
+		t.Errorf("by_source = %v, want the exclusion counts", si.BySource)
+	}
+	if len(si.Notes) != 1 {
+		t.Errorf("notes = %v, want the sentence that names the exclusion", si.Notes)
+	}
+	if !si.Diverged {
+		t.Error("diverged was dropped, so the session's own reconcile disagreement stays invisible")
+	}
+	if len(v.Subjects) != 1 || len(v.Subjects[0].Requirements) != 1 {
+		t.Fatalf("subjects = %+v", v.Subjects)
+	}
+	req := v.Subjects[0].Requirements[0]
+	if req.Touched != "neighbour" {
+		t.Errorf("touched = %q, want the provenance that tells own work from adjacent", req.Touched)
+	}
+	if !req.UncoveredOnMain {
+		t.Error("uncoveredOnMain was dropped, so pre-existing debt reads as this session's failure")
+	}
+	// And it survives being handed on: a tool re-encodes what it decoded.
+	out, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, want := range []string{"directory_not_scoped", "notes", "diverged", `"touched":"neighbour"`, "uncoveredOnMain"} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("re-encoded verdict lost %q: %s", want, out)
+		}
 	}
 }
