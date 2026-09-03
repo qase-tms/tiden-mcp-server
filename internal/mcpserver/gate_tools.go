@@ -31,7 +31,7 @@ type gateCheckArgs struct {
 func registerGateCheck(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate_check",
-		Description: "Compute the Quality Gate verdict (go/no-go) for a release, a branch, or current main if neither is given. Returns the verdict status (pass / blocked / risk_accepted), the per-component breakdown, and fix hints. Use this as the 'verify gates' step before shipping; pass branch to preview an intent branch's post-merge gate.",
+		Description: "Compute the Quality Gate verdict for a release, a branch, or current main if neither is given. Returns the verdict status (pass / blocked / not_verified / risk_accepted), the next action to take, the touched requirements with their own next action, the accepted risks, the per-component breakdown, and fix hints. With branch, the verdict answers for what that branch touched: not_verified means work is unfinished (a linked test never ran, or a requirement has no test) rather than broken, and the next action names the run to make or the cases to write. Use this as the 'verify' step, and act on the next action rather than on the status alone.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args gateCheckArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -55,7 +55,7 @@ type getVerdictArgs struct {
 func registerGetVerdict(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_verdict",
-		Description: "Read the latest Quality Gate verdict for a release, a branch, or current main without recomputing.",
+		Description: "Read the latest Quality Gate verdict for a release, a branch, or current main without recomputing. Carries the same next action, touched requirements and accepted risks as gate_check.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getVerdictArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))

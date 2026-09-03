@@ -520,3 +520,50 @@ func equalStringSlices(a, b []string) bool {
 	}
 	return true
 }
+
+// TestGateCheckDescription_NamesFourStatuses: an agent picks a tool from its
+// description, and then acts on what the description told it to expect. A
+// description that lists three statuses when the server can return four teaches
+// the agent to read the fourth as noise — and "not_verified" is the one it will
+// see most often on its own branch.
+func TestGateCheckDescription_NamesFourStatuses(t *testing.T) {
+	desc := toolDescription(t, "gate_check")
+	for _, want := range []string{"pass", "blocked", "not_verified", "risk_accepted"} {
+		if !strings.Contains(desc, want) {
+			t.Errorf("gate_check description does not name %q:\n%s", want, desc)
+		}
+	}
+	// The status alone was never actionable; the description must point at the
+	// move as well.
+	if !strings.Contains(desc, "next action") {
+		t.Errorf("gate_check description does not mention the next action:\n%s", desc)
+	}
+}
+
+// toolDescription reads one registered tool's description over the in-memory
+// transport — the same text an agent's tool list carries.
+func toolDescription(t *testing.T, name string) string {
+	t.Helper()
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if tool.Name == name {
+			return tool.Description
+		}
+	}
+	t.Fatalf("tool %q is not registered", name)
+	return ""
+}
