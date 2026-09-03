@@ -1,0 +1,23 @@
+CHANGELOG.md
+  s_a872b93c775d6f::t_10c10ca866c207 1-58
+docs/changelog-spec.md
+  s_a872b93c775d6f::t_da94b0fbd901d1 1-48
+CONTRIBUTING.md
+  s_a872b93c775d6f::t_b74daddea64512 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "dc931ad08402aa62122e0900b9df956545026e8c",
+  "prompts": {},
+  "sessions": {
+    "s_a872b93c775d6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c6a119f-c3ef-4dd2-bcf7-d416a6de88e4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
