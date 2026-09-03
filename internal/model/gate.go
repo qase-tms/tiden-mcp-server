@@ -45,11 +45,27 @@ type GateAcceptedRisk struct {
 // GateScopeInfo is the branch verdict's provenance: which sessions defined the
 // touched set, or that there was none.
 type GateScopeInfo struct {
-	Source              string   `json:"source,omitempty"` // "sessions" | "branch_delta" | "empty"
+	// Source: "sessions" | "branch_delta" | "unmeasured" | "retrieval_only" |
+	// "empty". The absences are DISTINCT because they call for different
+	// actions — code that resolved to no requirement, a session that read but
+	// asserted nothing, and no intent at all are three different problems.
+	Source              string   `json:"source,omitempty"`
 	SessionIDs          []string `json:"sessionIds,omitempty"`
 	TouchedRequirements int      `json:"touchedRequirements,omitempty"`
 	TouchedComponents   int      `json:"touchedComponents,omitempty"`
 	Empty               bool     `json:"empty,omitempty"`
+	// BySource attributes the touched set per provenance — "changed",
+	// "anchored", "neighbour" — plus the counts of what was deliberately NOT
+	// graded ("retrieval_not_scoped", "directory_not_scoped") and no_evidence.
+	BySource map[string]int `json:"bySource,omitempty"`
+	// Notes name what the scope left out and the action that brings it in.
+	// These MUST survive the round trip: this model is what a tool's answer is
+	// decoded into and re-encoded from, so a field missing here is a fact the
+	// agent never receives — the same defect the branch verdict exists to fix.
+	Notes []string `json:"notes,omitempty"`
+	// Diverged: a contributing session's own reconcile found no overlap between
+	// what it retrieved and what it changed.
+	Diverged bool `json:"diverged,omitempty"`
 }
 
 // GateTestFact is one non-passing case of a subject, named so an agent can act
@@ -75,6 +91,16 @@ type GateRequirementFact struct {
 	Accepted      bool   `json:"accepted,omitempty"`
 	Deferred      bool   `json:"deferred,omitempty"`
 	NextAction    string `json:"nextAction,omitempty"`
+	// Touched is why this requirement is graded: "changed" or "anchored" is
+	// this session's own work, "neighbour" is one graph hop away from it. An
+	// agent that cannot tell its own work from adjacent debt reads the whole
+	// answer as somebody else's — which is what happened on the branch this
+	// field exists for. Empty means a server that does not say; treat that as
+	// OWN work, never as adjacent.
+	Touched string `json:"touched,omitempty"`
+	// UncoveredOnMain: this requirement was already uncovered before the
+	// branch existed, so its gap is not this session's to close.
+	UncoveredOnMain bool `json:"uncoveredOnMain,omitempty"`
 }
 
 // GateSubjectResult is the per-subject breakdown of a verdict - the
