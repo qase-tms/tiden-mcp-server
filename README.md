@@ -70,7 +70,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_components` | Components for a product |
 | `list_environments` | Deployment environments for a product |
 | `list_releases` | Releases for a product |
-| `gate_check` | Compute a Quality Gate verdict (release, branch, or current main) |
+| `gate_check` | Compute a Quality Gate verdict (release, branch, or current main) — status, next action, touched requirements, accepted risks |
 | `get_verdict` | Read the latest Quality Gate verdict (release, branch, or current main) |
 | `get_overview` | Current product gate state on main |
 | `get_traceability` | Requirement-to-test traceability matrix (release, branch, or current main) |

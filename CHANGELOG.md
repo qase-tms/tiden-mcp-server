@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-03
+
+### Changed
+
+- `gate_check` and `get_verdict` mirror the branch Quality Gate's answer: the
+  verdict's `next_action`, its `annotation`, the `accepted_risks` a session
+  priced, the `scope_info` saying how a branch's touched scope was derived, and
+  each subject's touched requirements and non-passing tests. The tool
+  descriptions now name all four statuses (`pass` / `blocked` / `not_verified` /
+  `risk_accepted`) and tell the agent to act on the next action rather than on
+  the status alone — a branch verdict is `not_verified` far more often than
+  `blocked`, and a description that omitted it taught agents to read it as noise.
+
 ### Added
 
 - Executable changelog contract tests (`internal/changelogcontract`): a reference
@@ -61,5 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.3.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/qase-tms/tiden-mcp-server/releases/tag/v0.1.0
