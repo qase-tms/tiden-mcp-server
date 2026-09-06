@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -14,6 +15,14 @@ import (
 
 // Exercise the registered tool, including JSON argument decoding and MCP output.
 func TestListTestsPagingTool(t *testing.T) {
+	// Tool descriptions are the agent's interface: a capped traversal must
+	// say it is incomplete and tell the caller how to continue.
+	description := toolDescription(t, "list_tests")
+	for _, phrase := range []string{"one page", "page_token", "all=true", "100 pages", "incomplete"} {
+		if !strings.Contains(description, phrase) {
+			t.Fatalf("missing pagination guidance %q: %s", phrase, description)
+		}
+	}
 	for _, tc := range []struct {
 		name              string
 		args              map[string]any
