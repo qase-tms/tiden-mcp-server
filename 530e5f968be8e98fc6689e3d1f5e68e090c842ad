@@ -1,0 +1,22 @@
+internal/mcpserver/intent_tools.go
+  s_a1ec22d1784cd7::t_6fe394546add00 36
+  s_a1ec22d1784cd7::t_45ff20a84f5837 35
+internal/mcpserver/server_test.go
+  s_a1ec22d1784cd7::t_ec0fab389d179b 197-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "530e5f968be8e98fc6689e3d1f5e68e090c842ad",
+  "prompts": {},
+  "sessions": {
+    "s_a1ec22d1784cd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2db362b1-5918-43fc-af72-a72eda9c210e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

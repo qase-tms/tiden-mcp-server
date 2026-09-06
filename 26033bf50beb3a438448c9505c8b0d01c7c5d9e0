@@ -1,0 +1,30 @@
+internal/mcpserver/server_test.go
+  s_c12217fca4565f::t_e206dbf522a648 38-39,150-157,232-253
+  s_c12217fca4565f::t_9b21bd35cffd47 254-264
+internal/mcpserver/progress_tools.go
+  s_c12217fca4565f::t_166310f647189e 21,40-96
+internal/api/session_acceptance.go
+  s_c12217fca4565f::t_166310f647189e 1-32
+README.md
+  s_c12217fca4565f::t_166310f647189e 78-79
+internal/mcpserver/tools.go
+  s_c12217fca4565f::t_166310f647189e 36
+internal/api/session_acceptance_test.go
+  s_c12217fca4565f::t_166310f647189e 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "26033bf50beb3a438448c9505c8b0d01c7c5d9e0",
+  "prompts": {},
+  "sessions": {
+    "s_c12217fca4565f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019feb9a-95c2-7f50-b531-a084ce66926b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
