@@ -62,7 +62,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `get_requirement` | Fetch one requirement |
 | `create_requirement` | Create a requirement |
 | `update_requirement` | Update a requirement |
-| `list_tests` | Test suites and cases for a product |
+| `list_tests` | One page of test suites and cases (default 100); continue with `page_token`, or explicitly traverse with `all=true` |
 | `get_test` | Fetch one test suite or case |
 | `list_branches` | Branches for a product |
 | `create_branch` | Create a branch off main |

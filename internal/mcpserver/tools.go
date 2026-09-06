@@ -247,17 +247,29 @@ func registerUpdateRequirement(srv *mcp.Server, client *api.Client) {
 type listTestsArgs struct {
 	ProductID string `json:"product_id"       jsonschema:"Product ID (required)."`
 	Branch    string `json:"branch,omitempty" jsonschema:"Branch name. Omit for the main branch."`
+	PageSize  int    `json:"page_size,omitempty" jsonschema:"Tests per page (1–200; defaults to 100)."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken."`
+	All       bool   `json:"all,omitempty" jsonschema:"Explicitly fetch up to 100 pages of 200 tests. Cannot combine with paging arguments."`
 }
 
 func registerListTests(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_tests",
-		Description: "List all test suites and cases for a product, optionally scoped to a branch. Each item has a 'kind' field: 'suite' or 'case'.",
+		Description: "List one page of test suites and cases for a product, optionally scoped to a branch (100 items by default). Continue with pagination.nextPageToken as page_token. Use all=true only for a full catalog traversal (up to 100 pages; a remaining nextPageToken means the result is incomplete). Each item has a 'kind' field: 'suite' or 'case'.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listTestsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		resp, err := client.ListTests(ctx, args.ProductID, args.Branch)
+		if args.All && (args.PageSize != 0 || args.PageToken != "") {
+			return toolError(fmt.Errorf("all cannot be combined with page_size or page_token"))
+		}
+		var resp *api.ListTestsResponse
+		var err error
+		if args.All {
+			resp, err = client.ListTests(ctx, args.ProductID, args.Branch)
+		} else {
+			resp, err = client.ListTestsPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
+		}
 		if err != nil {
 			return toolError(err)
 		}

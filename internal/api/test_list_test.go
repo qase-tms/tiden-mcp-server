@@ -2,11 +2,29 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 )
+
+func TestListTestsAllCapRetainsContinuation(t *testing.T) {
+	requests := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"tests":[{"id":"t%d"}],"pagination":{"nextPageToken":"%d","totalCount":30000}}`, requests, requests)
+	}))
+	defer srv.Close()
+	resp, err := newTestClient(srv.URL).ListTests(context.Background(), "p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requests != 100 || len(resp.Tests) != 100 || resp.Pagination.NextPageToken != "100" || resp.Pagination.TotalCount != 30000 {
+		t.Fatalf("requests = %d, response = %+v", requests, resp)
+	}
+}
 
 func TestListTestsFollowsPages(t *testing.T) {
 	var requests []url.Values

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `list_tests` fetches one page of 100 tests by default, with `page_size` (1–200)
+  and `page_token` for explicit continuation. Agents that need the previous
+  catalog traversal must pass `all=true`; this fetches at most 100 pages of 200
+  tests and preserves any remaining `pagination.nextPageToken`. Total count,
+  response fields and concrete test IDs are unchanged. Full traversal cannot
+  be combined with paging arguments.
+
 ## [0.3.1] - 2026-09-04
 
 ### Fixed
