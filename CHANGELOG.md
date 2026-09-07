@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `lookup_context` retrieves up to eight independent plan questions through the
+  canonical batch API, with repository-qualified anchors, per-item mappings,
+  explicit partial errors, structured content and a read-only tool contract.
+
 ## [0.3.1] - 2026-09-04
 
 ### Fixed

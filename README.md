@@ -60,6 +60,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `get_product` | Fetch one product by id (name, code, description) |
 | `list_requirements` | Requirements for a product, optionally scoped to a branch |
 | `get_requirement` | Fetch one requirement |
+| `lookup_context` | Read context for 1–8 independent plan questions, preserving each item's mappings and diagnostics; creates no session or branch |
 | `create_requirement` | Create a requirement |
 | `update_requirement` | Update a requirement |
 | `list_tests` | Test suites and cases for a product |
@@ -102,3 +103,19 @@ Occurrence payloads (the full raw event JSON an SDK sent) are omitted by default
 because they are large enough to swamp an agent's context. `get_issue`,
 `list_issue_events` and `get_issue_event` take `include_payload: true` when the
 symbolicated frames were not enough.
+
+### Planning context
+
+`lookup_context` accepts `product_id`, optional `branch`, and `items` with stable
+`id`, a focused `question`, and optional `anchors` (`repository` in
+`github.com/org/repo` form plus repository-relative `path`). Optional
+`max_requirements` controls displayed detail (default 12, maximum 40).
+
+Use one item per independent behavior or decision. Implementation and tests of
+the same behavior can share context. Keep item mappings in the plan; a combined
+requirement dictionary does not replace them. The result includes an output
+schema, `structuredContent`, and compatible JSON text. Partial failures set
+`isError` while preserving successful items. `no_match` means unknown relevance;
+coverage means linked/proposed tests, not passed runs. Unknown branches fail.
+The server requires the batch retrieval API; this tool never falls back to a
+less precise lookup and never creates or advances an intent session.

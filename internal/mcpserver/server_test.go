@@ -15,6 +15,7 @@ import (
 // allExpectedTools is the canonical list of tool names that must be registered.
 // Any deviation (addition, removal, rename) must be a deliberate change here.
 var allExpectedTools = []string{
+	"lookup_context",
 	"whoami",
 	"list_workspaces",
 	"list_products",
@@ -360,6 +361,7 @@ func TestToolRequiredFields(t *testing.T) {
 	defer func() { _ = session.Close() }()
 
 	wantRequired := map[string][]string{
+		"lookup_context":          {"product_id", "items"},
 		"whoami":                  {},
 		"list_workspaces":         {},
 		"list_products":           {},
