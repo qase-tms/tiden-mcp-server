@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `get_run_results` accepts `summary_view=overview|cases|combos` for suite
+  statistics or one bounded case/combination page (default 100, maximum 200).
+  Combination pages require `identity_key`; continuations remain explicit.
+  Existing flat and full-summary defaults are unchanged. Unsupported old
+  servers and malformed pages fail instead of silently returning a full tree.
+
 - `list_requirements` accepts `view=identity` for one page of read-only IDs,
   titles, content hashes and source locators without bodies or source metadata.
   `page_size` defaults to 100 (maximum 200); `page_token` explicitly continues.

@@ -81,7 +81,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `link_requirement` | Link a test case to a requirement |
 | `list_test_runs` | List test runs for a product (status/environment/branch/search filters, paginated) |
 | `get_test_run` | Fetch one run by per-product seq number, incl. stats + live-doc sync outcome |
-| `get_run_results` | Run results: flat paginated attempts, or `summary=true` for the suite-tree rollup |
+| `get_run_results` | Flat paginated attempts by default; `summary_view=overview`, `cases`, or `combos` for lean reads (case/combo pages 100, max 200; explicit continuation). `summary=true` without a view retains the full tree. |
 | `report_test_results` | Submit a batch of test outcomes to a run (all-or-nothing, max 2000) |
 | `complete_test_run` | Finalize a run: compute verdict, lock results, trigger live-doc sync |
 | `create_test_run` | Create a run (status `new`) to report results into |
