@@ -62,7 +62,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `get_requirement` | Fetch one requirement |
 | `create_requirement` | Create a requirement |
 | `update_requirement` | Update a requirement |
-| `list_tests` | One page of test suites and cases (default 100); continue with `page_token`, or explicitly traverse with `all=true` |
+| `list_tests` | One page of test suites and cases (default 100); continue with `page_token`, or explicitly traverse detail with `all=true`. `view=identity` is one read-only page of matching fields without bodies/steps/counts; incompatible with `all`. |
 | `get_test` | Fetch one test suite or case |
 | `list_branches` | Branches for a product |
 | `create_branch` | Create a branch off main |

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `list_tests` accepts `view=identity` for one bounded read-only page of tags,
+  signatures and hierarchy identities, without bodies, steps or counts. The
+  default remains full detail. Identity cannot combine with `all`; explicit
+  continuation, invalid/foreign field checks and old-server errors prevent
+  incomplete data from appearing as writable full tests.
+
 - `get_run_results` accepts `summary_view=overview|cases|combos` for suite
   statistics or one bounded case/combination page (default 100, maximum 200).
   Combination pages require `identity_key`; continuations remain explicit.

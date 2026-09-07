@@ -266,18 +266,32 @@ type listTestsArgs struct {
 	PageSize  int    `json:"page_size,omitempty" jsonschema:"Tests per page (1–200; defaults to 100)."`
 	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken."`
 	All       bool   `json:"all,omitempty" jsonschema:"Explicitly fetch up to 100 pages of 200 tests. Cannot combine with paging arguments."`
+	View      string `json:"view,omitempty" jsonschema:"detail (default) or identity (read-only matching fields without bodies, steps or counts; always one page, incompatible with all)."`
 }
 
 func registerListTests(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_tests",
-		Description: "List one page of test suites and cases for a product, optionally scoped to a branch (100 items by default). Continue with pagination.nextPageToken as page_token. Use all=true only for a full catalog traversal (up to 100 pages; a remaining nextPageToken means the result is incomplete). Each item has a 'kind' field: 'suite' or 'case'.",
+		Description: "List one page of test suites and cases for a product, optionally scoped to a branch (100 items by default). Continue with pagination.nextPageToken as page_token. Use all=true only for a full detail catalog traversal (up to 100 pages; a remaining nextPageToken means the result is incomplete). Each item has a 'kind' field: 'suite' or 'case'. Opt into view=identity for separate read-only identities with tags and signatures but no descriptions, steps, execution payloads or counts; fetch get_test before editing omitted fields. Identity is always one page and cannot combine with all.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listTestsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.All && (args.PageSize != 0 || args.PageToken != "") {
 			return toolError(fmt.Errorf("all cannot be combined with page_size or page_token"))
+		}
+		if args.View != "" && args.View != "detail" && args.View != "identity" {
+			return toolError(fmt.Errorf("view must be detail or identity"))
+		}
+		if args.View == "identity" {
+			if args.All {
+				return toolError(fmt.Errorf("identity is always one page; continue with page_token instead of all"))
+			}
+			response, err := client.ListTestIdentitiesPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
+			if err != nil {
+				return toolError(err)
+			}
+			return toolResult(response)
 		}
 		var resp *api.ListTestsResponse
 		var err error
