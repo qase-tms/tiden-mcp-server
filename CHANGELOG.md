@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `list_requirements` accepts `view=identity` for one page of read-only IDs,
+  titles, content hashes and source locators without bodies or source metadata.
+  `page_size` defaults to 100 (maximum 200); `page_token` explicitly continues.
+  Omitted/default or `view=detail` preserves the full list. Invalid projections,
+  missing hashes and unsupported old servers return errors rather than partial
+  writable requirement objects.
+
 - `list_tests` fetches one page of 100 tests by default, with `page_size` (1–200)
   and `page_token` for explicit continuation. Agents that need the previous
   catalog traversal must pass `all=true`; this fetches at most 100 pages of 200

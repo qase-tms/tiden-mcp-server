@@ -136,15 +136,31 @@ func registerGetProduct(srv *mcp.Server, client *api.Client) {
 type listRequirementsArgs struct {
 	ProductID string `json:"product_id"          jsonschema:"Product ID (required)."`
 	Branch    string `json:"branch,omitempty"    jsonschema:"Branch name. Omit for the main branch."`
+	View      string `json:"view,omitempty" jsonschema:"identity returns one read-only page of IDs, titles, hashes and source locators; omitted or detail preserves the full list. Identity objects omit content and must never be reused as updates."`
+	PageSize  int    `json:"page_size,omitempty" jsonschema:"Identity view only: page size, default 100, maximum 200."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Identity view only: continuation token from the preceding page."`
 }
 
 func registerListRequirements(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_requirements",
-		Description: "List all requirements for a product, optionally scoped to a branch; use branch to view branch-local copies.",
+		Description: "List requirements for a product/branch. Prefer view=identity for a bounded read-only ID/title/hash/source index; follow its pagination token as needed. Omit view for the compatible full-document list.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listRequirementsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
+		}
+		if args.View == "identity" {
+			resp, err := client.ListRequirementIdentitiesPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
+			if err != nil {
+				return toolError(err)
+			}
+			return toolResult(resp)
+		}
+		if args.View != "" && args.View != "detail" {
+			return toolError(fmt.Errorf("view must be detail or identity"))
+		}
+		if args.PageSize != 0 || args.PageToken != "" {
+			return toolError(fmt.Errorf("page_size and page_token require view=identity"))
 		}
 		resp, err := client.ListRequirements(ctx, args.ProductID, args.Branch)
 		if err != nil {

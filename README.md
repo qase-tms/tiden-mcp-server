@@ -58,7 +58,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_workspaces` | Workspaces the user belongs to |
 | `list_products` | Products in a workspace |
 | `get_product` | Fetch one product by id (name, code, description) |
-| `list_requirements` | Requirements for a product, optionally scoped to a branch |
+| `list_requirements` | Requirements for a product/branch; `view=identity` returns one read-only page of IDs, titles, hashes and source locators (`page_size` 1–200, `page_token` to continue); default remains the full list |
 | `get_requirement` | Fetch one requirement |
 | `create_requirement` | Create a requirement |
 | `update_requirement` | Update a requirement |
