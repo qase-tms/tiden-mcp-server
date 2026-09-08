@@ -12,6 +12,7 @@ import (
 // registerTools adds all Tiden MCP tools to the server. Each tool is a
 // thin wrapper over an existing api.Client method - no domain logic here.
 func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID string) {
+	registerLookupContext(srv, client)
 	registerWhoami(srv, client)
 	registerListWorkspaces(srv, client)
 	registerListProducts(srv, client, defaultWorkspaceID)
