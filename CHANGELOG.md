@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-08
+
+### Changed
+
+- `list_tests` accepts `view=identity` for one bounded read-only page of tags,
+  signatures and hierarchy identities, without bodies, steps or counts. The
+  default remains full detail. Identity cannot combine with `all`; explicit
+  continuation, invalid/foreign field checks and old-server errors prevent
+  incomplete data from appearing as writable full tests.
+
+- `get_run_results` accepts `summary_view=overview|cases|combos` for suite
+  statistics or one bounded case/combination page (default 100, maximum 200).
+  Combination pages require `identity_key`; continuations remain explicit.
+  Existing flat and full-summary defaults are unchanged. Unsupported old
+  servers and malformed pages fail instead of silently returning a full tree.
+
+- `list_requirements` accepts `view=identity` for one page of read-only IDs,
+  titles, content hashes and source locators without bodies or source metadata.
+  `page_size` defaults to 100 (maximum 200); `page_token` explicitly continues.
+  Omitted/default or `view=detail` preserves the full list. Invalid projections,
+  missing hashes and unsupported old servers return errors rather than partial
+  writable requirement objects.
+
+- `list_tests` fetches one page of 100 tests by default, with `page_size` (1–200)
+  and `page_token` for explicit continuation. Agents that need the previous
+  catalog traversal must pass `all=true`; this fetches at most 100 pages of 200
+  tests and preserves any remaining `pagination.nextPageToken`. Total count,
+  response fields and concrete test IDs are unchanged. Full traversal cannot
+  be combined with paging arguments.
+
 ## [0.3.1] - 2026-09-04
 
 ### Fixed
@@ -90,6 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.3.2]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.1.0...v0.2.0

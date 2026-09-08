@@ -136,15 +136,31 @@ func registerGetProduct(srv *mcp.Server, client *api.Client) {
 type listRequirementsArgs struct {
 	ProductID string `json:"product_id"          jsonschema:"Product ID (required)."`
 	Branch    string `json:"branch,omitempty"    jsonschema:"Branch name. Omit for the main branch."`
+	View      string `json:"view,omitempty" jsonschema:"identity returns one read-only page of IDs, titles, hashes and source locators; omitted or detail preserves the full list. Identity objects omit content and must never be reused as updates."`
+	PageSize  int    `json:"page_size,omitempty" jsonschema:"Identity view only: page size, default 100, maximum 200."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Identity view only: continuation token from the preceding page."`
 }
 
 func registerListRequirements(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_requirements",
-		Description: "List all requirements for a product, optionally scoped to a branch; use branch to view branch-local copies.",
+		Description: "List requirements for a product/branch. Prefer view=identity for a bounded read-only ID/title/hash/source index; follow its pagination token as needed. Omit view for the compatible full-document list.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listRequirementsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
+		}
+		if args.View == "identity" {
+			resp, err := client.ListRequirementIdentitiesPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
+			if err != nil {
+				return toolError(err)
+			}
+			return toolResult(resp)
+		}
+		if args.View != "" && args.View != "detail" {
+			return toolError(fmt.Errorf("view must be detail or identity"))
+		}
+		if args.PageSize != 0 || args.PageToken != "" {
+			return toolError(fmt.Errorf("page_size and page_token require view=identity"))
 		}
 		resp, err := client.ListRequirements(ctx, args.ProductID, args.Branch)
 		if err != nil {
@@ -247,17 +263,43 @@ func registerUpdateRequirement(srv *mcp.Server, client *api.Client) {
 type listTestsArgs struct {
 	ProductID string `json:"product_id"       jsonschema:"Product ID (required)."`
 	Branch    string `json:"branch,omitempty" jsonschema:"Branch name. Omit for the main branch."`
+	PageSize  int    `json:"page_size,omitempty" jsonschema:"Tests per page (1–200; defaults to 100)."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken."`
+	All       bool   `json:"all,omitempty" jsonschema:"Explicitly fetch up to 100 pages of 200 tests. Cannot combine with paging arguments."`
+	View      string `json:"view,omitempty" jsonschema:"detail (default) or identity (read-only matching fields without bodies, steps or counts; always one page, incompatible with all)."`
 }
 
 func registerListTests(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_tests",
-		Description: "List all test suites and cases for a product, optionally scoped to a branch. Each item has a 'kind' field: 'suite' or 'case'.",
+		Description: "List one page of test suites and cases for a product, optionally scoped to a branch (100 items by default). Continue with pagination.nextPageToken as page_token. Use all=true only for a full detail catalog traversal (up to 100 pages; a remaining nextPageToken means the result is incomplete). Each item has a 'kind' field: 'suite' or 'case'. Opt into view=identity for separate read-only identities with tags and signatures but no descriptions, steps, execution payloads or counts; fetch get_test before editing omitted fields. Identity is always one page and cannot combine with all.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listTestsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		resp, err := client.ListTests(ctx, args.ProductID, args.Branch)
+		if args.All && (args.PageSize != 0 || args.PageToken != "") {
+			return toolError(fmt.Errorf("all cannot be combined with page_size or page_token"))
+		}
+		if args.View != "" && args.View != "detail" && args.View != "identity" {
+			return toolError(fmt.Errorf("view must be detail or identity"))
+		}
+		if args.View == "identity" {
+			if args.All {
+				return toolError(fmt.Errorf("identity is always one page; continue with page_token instead of all"))
+			}
+			response, err := client.ListTestIdentitiesPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
+			if err != nil {
+				return toolError(err)
+			}
+			return toolResult(response)
+		}
+		var resp *api.ListTestsResponse
+		var err error
+		if args.All {
+			resp, err = client.ListTests(ctx, args.ProductID, args.Branch)
+		} else {
+			resp, err = client.ListTestsPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
+		}
 		if err != nil {
 			return toolError(err)
 		}
