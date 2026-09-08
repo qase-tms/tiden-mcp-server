@@ -43,6 +43,13 @@ func (c *Client) ListRequirementIdentitiesPage(ctx context.Context, productID, b
 	if response.Identities == nil || response.Pagination == nil {
 		return nil, fmt.Errorf("incomplete identity response")
 	}
+	if len(response.Identities) > pageSize {
+		return nil, fmt.Errorf("requirement identity response exceeds requested page size")
+	}
+	if response.Pagination.NextPageToken != "" && (len(response.Identities) == 0 || response.Pagination.NextPageToken == pageToken) {
+		return nil, fmt.Errorf("non-progressing requirement identity pagination")
+	}
+	seen := map[string]bool{}
 	for _, row := range response.Identities {
 		if row.ID == "" || row.ProductID != productID || row.Sources == nil {
 			return nil, fmt.Errorf("incomplete or foreign requirement identity")
@@ -53,6 +60,10 @@ func (c *Client) ListRequirementIdentitiesPage(ctx context.Context, productID, b
 				return nil, fmt.Errorf("missing or invalid requirement identity hash")
 			}
 		}
+		if seen[row.ID] {
+			return nil, fmt.Errorf("duplicate requirement identity %s", row.ID)
+		}
+		seen[row.ID] = true
 	}
 	return &response, nil
 }

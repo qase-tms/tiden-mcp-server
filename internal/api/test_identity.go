@@ -49,6 +49,9 @@ func (c *Client) ListTestIdentitiesPage(ctx context.Context, productID, branch s
 	if len(*wire.Identities) > pageSize {
 		return nil, fmt.Errorf("test identity response exceeds requested page size")
 	}
+	if wire.Pagination.NextPageToken != "" && (len(*wire.Identities) == 0 || wire.Pagination.NextPageToken == pageToken) {
+		return nil, fmt.Errorf("non-progressing test identity pagination")
+	}
 	out := &ListTestIdentitiesResponse{View: "identity", Identities: make([]model.TestIdentity, 0, len(*wire.Identities)), Pagination: wire.Pagination}
 	seen := map[string]bool{}
 	for _, raw := range *wire.Identities {
