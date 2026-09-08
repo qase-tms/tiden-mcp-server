@@ -58,12 +58,12 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_workspaces` | Workspaces the user belongs to |
 | `list_products` | Products in a workspace |
 | `get_product` | Fetch one product by id (name, code, description) |
-| `list_requirements` | Requirements for a product, optionally scoped to a branch |
+| `list_requirements` | Requirements for a product/branch; `view=identity` returns one read-only page of IDs, titles, hashes and source locators (`page_size` 1–200, `page_token` to continue); default remains the full list |
 | `get_requirement` | Fetch one requirement |
 | `lookup_context` | Read context for 1–8 independent plan questions, preserving each item's mappings and diagnostics; creates no session or branch |
 | `create_requirement` | Create a requirement |
 | `update_requirement` | Update a requirement |
-| `list_tests` | Test suites and cases for a product |
+| `list_tests` | One page of test suites and cases (default 100); continue with `page_token`, or explicitly traverse detail with `all=true`. `view=identity` is one read-only page of matching fields without bodies/steps/counts; incompatible with `all`. |
 | `get_test` | Fetch one test suite or case |
 | `list_branches` | Branches for a product |
 | `create_branch` | Create a branch off main |
@@ -82,7 +82,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `link_requirement` | Link a test case to a requirement |
 | `list_test_runs` | List test runs for a product (status/environment/branch/search filters, paginated) |
 | `get_test_run` | Fetch one run by per-product seq number, incl. stats + live-doc sync outcome |
-| `get_run_results` | Run results: flat paginated attempts, or `summary=true` for the suite-tree rollup |
+| `get_run_results` | Flat paginated attempts by default; `summary_view=overview`, `cases`, or `combos` for lean reads (case/combo pages 100, max 200; explicit continuation). `summary=true` without a view retains the full tree. |
 | `report_test_results` | Submit a batch of test outcomes to a run (all-or-nothing, max 2000) |
 | `complete_test_run` | Finalize a run: compute verdict, lock results, trigger live-doc sync |
 | `create_test_run` | Create a run (status `new`) to report results into |

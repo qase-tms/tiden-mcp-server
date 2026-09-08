@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/qase-tms/tiden-mcp-server/internal/model"
 )
@@ -38,6 +40,29 @@ type CreateTestResponse struct {
 	Test model.Test `json:"test"`
 }
 
+// ListTestsPage fetches exactly one page, retaining its continuation token.
+func (c *Client) ListTestsPage(ctx context.Context, productID, branch string, pageSize int, pageToken string) (*ListTestsResponse, error) {
+	if pageSize == 0 {
+		pageSize = 100
+	}
+	if pageSize < 1 || pageSize > 200 {
+		return nil, fmt.Errorf("page_size must be between 1 and 200")
+	}
+	q := url.Values{}
+	q.Set("pagination.pageSize", strconv.Itoa(pageSize))
+	if pageToken != "" {
+		q.Set("pagination.pageToken", pageToken)
+	}
+	if branch != "" {
+		q.Set("branch", branch)
+	}
+	var resp ListTestsResponse
+	if err := c.Do(ctx, "GET", pathf("/v1/products/%s/tests", productID)+"?"+q.Encode(), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // ListTests fetches all tests for a product/branch, following
 // pagination.nextPageToken across pages until exhausted (capped at 100
 // pages) rather than returning only the first page.
@@ -49,17 +74,8 @@ func (c *Client) ListTests(ctx context.Context, productID string, branch ...stri
 	var out ListTestsResponse
 	pageToken := ""
 	for pages := 0; pages < 100; pages++ {
-		var resp ListTestsResponse
-		q := url.Values{}
-		q.Set("pagination.pageSize", "200")
-		if pageToken != "" {
-			q.Set("pagination.pageToken", pageToken)
-		}
-		if qBranch != "" {
-			q.Set("branch", qBranch)
-		}
-		path := pathf("/v1/products/%s/tests", productID) + "?" + q.Encode()
-		if err := c.Do(ctx, "GET", path, nil, &resp); err != nil {
+		resp, err := c.ListTestsPage(ctx, productID, qBranch, 200, pageToken)
+		if err != nil {
 			return nil, err
 		}
 		out.Tests = append(out.Tests, resp.Tests...)

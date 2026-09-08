@@ -93,24 +93,37 @@ type getRunResultsArgs struct {
 	ProductID   string `json:"product_id"             jsonschema:"Product ID (required)."`
 	RunSeq      int    `json:"run_seq"                 jsonschema:"The run's per-product sequence number (required)."`
 	Summary     bool   `json:"summary,omitempty"       jsonschema:"true = pre-aggregated suite tree + per-case rollups with param combos (GetRunSummary); false = flat paginated result rows (default)."`
+	SummaryView string `json:"summary_view,omitempty" jsonschema:"Explicit lightweight read: overview (suite stats), cases (one case page), or combos (one combination page requiring identity_key). No automatic full-tree fallback. Omit to preserve existing summary/flat behavior."`
 	Status      string `json:"status,omitempty"        jsonschema:"Flat form only. Filter: passed, failed, blocked, skipped, or invalid. With latest_only it means 'currently red', not 'failed at least once'."`
 	Search      string `json:"search,omitempty"        jsonschema:"Flat form only. Title substring filter."`
-	IdentityKey string `json:"identity_key,omitempty"  jsonschema:"Flat form only. Exact case identity — all attempts of one case, e.g. its retry history."`
+	IdentityKey string `json:"identity_key,omitempty"  jsonschema:"Exact case identity for flat attempts or required for summary_view=combos."`
 	LatestOnly  bool   `json:"latest_only,omitempty"   jsonschema:"Flat form only. Collapse retries to the single latest attempt per parameter combination BEFORE other filters apply."`
-	PageSize    int    `json:"page_size,omitempty"     jsonschema:"Flat form only. Page size (default 50, max 200)."`
-	PageToken   string `json:"page_token,omitempty"    jsonschema:"Flat form only. Opaque pagination token."`
+	PageSize    int    `json:"page_size,omitempty"     jsonschema:"Page size: default 50 for flat attempts, 100 for summary cases/combos; max 200. Not accepted for overview."`
+	PageToken   string `json:"page_token,omitempty"    jsonschema:"Continuation for flat attempts or summary cases/combos."`
 }
 
 func registerGetRunResults(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_run_results",
-		Description: "Fetch results for a test run - either the flat, paginated attempt list, or (with summary=true) the pre-aggregated suite-tree + per-case rollup. Use summary=true for an overview; the flat form to page through individual attempts.",
+		Description: "Fetch run results. Prefer summary_view=overview for suite statistics, cases for a case page, or combos with identity_key for a combination page. The default remains flat paginated attempts; summary=true without summary_view preserves the full legacy tree.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getRunResultsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
 		if args.RunSeq <= 0 {
 			return toolError(errInvalidRunSeq())
+		}
+		if args.SummaryView != "" {
+			if args.Status != "" || args.Search != "" || args.LatestOnly {
+				return toolError(fmt.Errorf("summary_view does not accept flat result filters"))
+			}
+			projection, err := client.GetRunSummaryProjection(ctx, args.ProductID, args.RunSeq, api.RunSummaryProjectionOptions{
+				View: args.SummaryView, IdentityKey: args.IdentityKey, PageSize: args.PageSize, PageToken: args.PageToken,
+			})
+			if err != nil {
+				return toolError(err)
+			}
+			return toolResult(projection)
 		}
 		if args.Summary {
 			sum, err := client.GetRunSummary(ctx, args.ProductID, args.RunSeq)
