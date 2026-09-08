@@ -1,0 +1,27 @@
+internal/api/requirement_identity_test.go
+  s_a750868a3ea132::t_028f6e1a38c8e8 18-19
+  s_a750868a3ea132::t_de259264755893 1-17,20-79
+internal/api/requirement_identity.go
+  s_a750868a3ea132::t_1792a239e0d19d 46-52,63-66
+internal/api/test_identity.go
+  s_a750868a3ea132::t_a0324deb050e2d 52-54
+internal/api/test_identity_test.go
+  s_a750868a3ea132::t_c8df74789096c3 1-15,18-77
+  s_a750868a3ea132::t_028f6e1a38c8e8 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e8231b30a5fac497674c4d68395ba5679f0eb21c",
+  "prompts": {},
+  "sessions": {
+    "s_a750868a3ea132": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34e5e898-c82d-4a6d-a78c-a89584ce8389",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
