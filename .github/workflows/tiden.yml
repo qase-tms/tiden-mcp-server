@@ -1,0 +1,10 @@
+name: Tiden
+on:
+  push:
+    branches: [main]
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  sync:
+    uses: qase-tms/tiden-actions/.github/workflows/sync.yml@v1
