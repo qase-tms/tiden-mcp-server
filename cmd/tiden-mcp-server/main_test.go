@@ -44,7 +44,7 @@ func TestResolveConfig_V2FileWithRepoBinding_FastPath(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if resolved.WorkspaceID != "ws-1111" || resolved.APIToken != "tdn_tok" || resolved.Source != resolve.SourceRepoBinding {
-		t.Errorf("resolved = %+v", resolved)
+		t.Errorf("resolved = {BaseURL:%q WorkspaceID:%q Source:%q token:%s}", resolved.BaseURL, resolved.WorkspaceID, resolved.Source, redactToken(resolved.APIToken))
 	}
 }
 
@@ -116,7 +116,7 @@ func TestResolveConfig_FlagOverridesFile(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if resolved.BaseURL != "https://flag.example" || resolved.APIToken != "tok-flag" || resolved.WorkspaceID != "ws-flag" || resolved.Source != resolve.SourceFlag {
-		t.Errorf("resolved = %+v", resolved)
+		t.Errorf("resolved = {BaseURL:%q WorkspaceID:%q Source:%q token:%s}", resolved.BaseURL, resolved.WorkspaceID, resolved.Source, redactToken(resolved.APIToken))
 	}
 }
 

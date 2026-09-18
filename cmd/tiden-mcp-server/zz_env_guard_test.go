@@ -21,3 +21,12 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(home)
 	os.Exit(code)
 }
+
+// redactToken keeps failure messages free of credentials: a test that prints a
+// resolved config must never reproduce the token, even a fake one.
+func redactToken(s string) string {
+	if len(s) <= 4 {
+		return "<redacted>"
+	}
+	return s[:4] + "…"
+}
