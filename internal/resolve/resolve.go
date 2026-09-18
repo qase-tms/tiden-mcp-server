@@ -77,10 +77,11 @@ type Resolved struct {
 }
 
 // Error is returned when the ladder cannot resolve. Code is one of
-// "NO_LOGIN", "E1", "E2", "E3" (or "E5" for the rare case an override token
-// itself resolves to nothing - not part of the Linear-numbered set, see
-// resolveOverrideToken). The caller prints Message then each Hint on its
-// own line to stderr and exits 2.
+// "NO_LOGIN", "E1", "E2", "E3" - all reserved for the stored-login path
+// (determineTargetWorkspace). An explicit flag/env token (resolveOverrideToken)
+// never produces one: it always resolves, with WorkspaceID left empty when no
+// single workspace could be chosen. The caller prints Message then each Hint
+// on its own line to stderr and exits 2.
 type Error struct {
 	Code    string
 	Message string
@@ -314,6 +315,19 @@ func gatherAllLoginWorkspaces(ctx context.Context, d Deps, store *config.Store) 
 // flag/env workspace id, the repo binding's workspaceId, a product probe
 // against the repo binding's productId, a repository lookup, and finally
 // the token's sole workspace.
+//
+// An explicitly given token is never refused just because no single
+// workspace could be chosen for it: once none of those steps names exactly
+// one workspace (repository lookup finds none/several/is unavailable, or
+// ListWorkspaces lists zero, several, or fails outright - a rejected token,
+// an unreachable server, anything), Resolve still succeeds, with
+// WorkspaceID left empty. The pre-TIDEN-68 server started the same way with
+// a token-only env, and each tool call that actually needs a workspace
+// already reports "workspace_id is required" when neither its argument nor
+// this default is set - so nothing is lost by deferring the ambiguity past
+// startup instead of erroring here. E1/E2/E3/NO_LOGIN stay reserved for the
+// stored-login path (determineTargetWorkspace); this function never returns
+// one.
 func resolveOverrideToken(ctx context.Context, d Deps, store *config.Store, repoFile *repoconfig.File, token, tokenSrc, baseURL, wsOverride string) (*Resolved, error) {
 	if baseURL == "" {
 		if l := findLoginByToken(store, token); l != nil {
@@ -358,50 +372,22 @@ func resolveOverrideToken(ctx context.Context, d Deps, store *config.Store, repo
 
 	if d.RepositoryID != "" {
 		if resp, err := client.ResolveRepository(ctx, d.RepositoryID); err == nil {
-			candidates := dedupeByProductID(resp.Candidates)
-			switch len(candidates) {
-			case 1:
+			if candidates := dedupeByProductID(resp.Candidates); len(candidates) == 1 {
 				return build(candidates[0].WorkspaceID, candidates[0].WorkspaceName), nil
-			default:
-				if len(candidates) > 1 {
-					return nil, e3FromRepositoryCandidates(candidates)
-				}
 			}
+			// Zero or several candidates: no single answer, fall through.
 		}
 		// ErrUnimplemented, ErrUnauthorized, or any other failure (including
 		// a transport error or a 5xx): this step has no answer, fall through.
 	}
 
-	resp, err := client.ListWorkspaces(ctx)
-	if err != nil {
-		if errors.Is(err, api.ErrUnauthorized) {
-			return nil, &Error{Code: "E5", Message: "API token was rejected.", Hints: []string{"tiden setup"}}
-		}
-		// This is the last step: a transport/5xx error here can't fall
-		// through to anything else, but it must still surface as a typed,
-		// actionable error rather than aborting Resolve outright.
-		return nil, &Error{
-			Code:    "E5",
-			Message: fmt.Sprintf("Could not verify the API token: %s.", err),
-			Hints:   []string{"tiden-mcp-server -workspace-id <id>"},
-		}
-	}
-	switch len(resp.Workspaces) {
-	case 1:
+	if resp, err := client.ListWorkspaces(ctx); err == nil && len(resp.Workspaces) == 1 {
 		return build(resp.Workspaces[0].ID, resp.Workspaces[0].Name), nil
-	case 0:
-		return nil, &Error{
-			Code:    "E5",
-			Message: "API token did not resolve to any workspace. Pass -workspace-id <id> (or TIDEN_WORKSPACE_ID) to select one.",
-			Hints:   []string{"tiden-mcp-server -workspace-id <id>"},
-		}
-	default:
-		candidates := make([]wsCandidate, len(resp.Workspaces))
-		for i, w := range resp.Workspaces {
-			candidates[i] = wsCandidate{id: w.ID, name: w.Name, account: account}
-		}
-		return nil, e3FromWorkspaceCandidates(candidates)
 	}
+	// Zero or several workspaces, or the call itself failed (rejected
+	// token, unreachable server, ...): resolve anyway, with no workspace -
+	// see the function doc.
+	return build("", ""), nil
 }
 
 func e3FromRepositoryCandidates(cs []model.RepositoryCandidate) *Error {

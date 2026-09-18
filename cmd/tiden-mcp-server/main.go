@@ -150,13 +150,21 @@ func resolveConfig(ctx context.Context, cwd, flagBaseURL, flagAPIToken, flagWork
 // printDiagnostic prints the one required startup line naming the resolved
 // workspace, account and how it was decided.
 func printDiagnostic(w *os.File, r *resolve.Resolved) {
-	name := r.WorkspaceName
-	if name == "" {
-		name = r.WorkspaceID
-	}
 	account := r.Account
 	if account == "" {
 		account = "unknown"
+	}
+	if r.WorkspaceID == "" {
+		// An explicitly given token (flag/env) that named no single
+		// workspace: the server still starts (see internal/resolve's F6m
+		// doc), but there is nothing to put in parentheses - naming it
+		// "<none>" beats printing an empty "()" pair.
+		fmt.Fprintf(w, "tiden-mcp-server: workspace <none> as %s [%s]\n", account, r.Source)
+		return
+	}
+	name := r.WorkspaceName
+	if name == "" {
+		name = r.WorkspaceID
 	}
 	fmt.Fprintf(w, "tiden-mcp-server: workspace %s (%s) as %s [%s]\n", name, r.WorkspaceID, account, r.Source)
 }

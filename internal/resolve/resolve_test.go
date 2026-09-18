@@ -472,6 +472,67 @@ func TestResolve_ProductNotVisible_ReturnsE2(t *testing.T) {
 	}
 }
 
+// TestResolve_OverrideToken_SeveralWorkspaces_ResolvesWithEmptyWorkspace is
+// the F6m ladder amendment, mirroring the CLI: an explicitly given token
+// (flag/env) must never be refused just because no single workspace could
+// be chosen for it. The pre-TIDEN-68 server started the same way with a
+// token-only env; list_products already reports "workspace_id is required"
+// per call when neither the argument nor this default is set, so deferring
+// the ambiguity to call time (rather than erroring at startup) loses
+// nothing.
+func TestResolve_OverrideToken_SeveralWorkspaces_ResolvesWithEmptyWorkspace(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/workspaces" {
+			t.Fatalf("unexpected request: %s", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"workspaces":[{"id":"ws-a","name":"A"},{"id":"ws-b","name":"B"}]}`))
+	}))
+	defer srv.Close()
+
+	deps := Deps{
+		Store:       &config.Store{},
+		RepoFile:    &repoconfig.File{},
+		EnvAPIToken: "tok-env",
+		EnvBaseURL:  srv.URL,
+		NewClient:   realClientFactory(2 * time.Second),
+	}
+	got, err := Resolve(context.Background(), deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v (an override token must never be refused)", err)
+	}
+	if got.WorkspaceID != "" {
+		t.Errorf("WorkspaceID = %q, want empty (several workspaces, none chosen)", got.WorkspaceID)
+	}
+	if got.BaseURL != srv.URL || got.APIToken != "tok-env" || got.Source != SourceEnv {
+		t.Errorf("got = %+v, want the override baseUrl/token/source preserved", got)
+	}
+}
+
+// TestResolve_OverrideToken_NoWorkspaces_ResolvesWithEmptyWorkspace covers
+// the "decodes to nothing" half of the same amendment: ListWorkspaces
+// succeeds but lists none.
+func TestResolve_OverrideToken_NoWorkspaces_ResolvesWithEmptyWorkspace(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"workspaces":[]}`))
+	}))
+	defer srv.Close()
+
+	deps := Deps{
+		Store:       &config.Store{},
+		RepoFile:    &repoconfig.File{},
+		EnvAPIToken: "tok-env",
+		EnvBaseURL:  srv.URL,
+		NewClient:   realClientFactory(2 * time.Second),
+	}
+	got, err := Resolve(context.Background(), deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v (an override token must never be refused)", err)
+	}
+	if got.WorkspaceID != "" || got.BaseURL != srv.URL || got.APIToken != "tok-env" || got.Source != SourceEnv {
+		t.Errorf("got = %+v", got)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || (len(substr) > 0 && indexOf(s, substr) >= 0))
 }

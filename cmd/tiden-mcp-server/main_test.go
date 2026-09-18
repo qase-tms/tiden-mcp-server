@@ -120,6 +120,54 @@ func TestResolveConfig_FlagOverridesFile(t *testing.T) {
 	}
 }
 
+// TestResolveConfig_TokenOnlyEnv_StartsWithEmptyWorkspace is the F6m ladder
+// amendment: an explicitly given token (TIDEN_API_TOKEN, mirroring the
+// pre-TIDEN-68 token-only-env deployment) must start the server even when
+// no workspace can be chosen for it - never an E5/refusal at startup.
+func TestResolveConfig_TokenOnlyEnv_StartsWithEmptyWorkspace(t *testing.T) {
+	// HOME is already an empty temp dir (TestMain): no ~/.tiden/config.json,
+	// so the only login the ladder knows about is the env override.
+	t.Setenv("TIDEN_API_TOKEN", "tok-env")
+	t.Setenv("TIDEN_BASE_URL", "https://app.tiden.ai")
+
+	cwd := t.TempDir()
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v (a token-only env must never be refused)", err)
+	}
+	if resolved.WorkspaceID != "" {
+		t.Errorf("WorkspaceID = %q, want empty (no repo binding, no product/repository match, no store to probe)", resolved.WorkspaceID)
+	}
+	if resolved.BaseURL != "https://app.tiden.ai" || resolved.APIToken != "tok-env" || resolved.Source != resolve.SourceEnv {
+		t.Errorf("resolved = {BaseURL:%q Source:%q token:%s}", resolved.BaseURL, resolved.Source, redactToken(resolved.APIToken))
+	}
+}
+
+func TestPrintDiagnostic_EmptyWorkspaceRendersSensibly(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	printDiagnostic(w, &resolve.Resolved{
+		BaseURL:  "https://app.tiden.ai",
+		APIToken: "tok-env",
+		Source:   resolve.SourceEnv,
+	})
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	out := string(buf[:n])
+	if !strings.Contains(out, "<none>") {
+		t.Errorf("out = %q, want it to name the missing workspace sensibly (e.g. <none>), not an empty pair of parens", out)
+	}
+	if strings.Contains(out, "()") {
+		t.Errorf("out = %q, must not print an empty (id) pair", out)
+	}
+}
+
 func TestPrintResolutionError_PrintsMessageAndHints(t *testing.T) {
 	r, w, err := os.Pipe()
 	if err != nil {
