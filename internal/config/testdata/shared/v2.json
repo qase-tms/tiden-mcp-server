@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "timeout": "45s",
+  "workspaces": {
+    "ws-1111": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_shared_token", "account": "me@example.dev", "name": "Personal" },
+    "ws-2222": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_shared_token", "account": "me@example.dev", "name": "Acme Inc" },
+    "ws-3333": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_other_token", "account": "work@example.dev", "name": "Contractor Co" }
+  }
+}

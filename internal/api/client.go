@@ -27,11 +27,12 @@ func pathf(format string, args ...string) string {
 }
 
 var (
-	ErrUnauthorized = errors.New("API token is invalid or expired")
-	ErrForbidden    = errors.New("permission denied")
-	ErrNotFound     = errors.New("resource not found")
-	ErrRateLimited  = errors.New("rate limited after retries")
-	ErrServerError  = errors.New("server error after retries")
+	ErrUnauthorized  = errors.New("API token is invalid or expired")
+	ErrForbidden     = errors.New("permission denied")
+	ErrNotFound      = errors.New("resource not found")
+	ErrRateLimited   = errors.New("rate limited after retries")
+	ErrServerError   = errors.New("server error after retries")
+	ErrUnimplemented = errors.New("server does not implement this endpoint")
 )
 
 type APIError struct {
@@ -86,7 +87,9 @@ func (c *Client) WithTimeout(d time.Duration) *Client {
 // on 429/5xx (any method - pre-existing behavior: a 5xx after a committed
 // write may re-send a POST) and on transport errors for idempotent methods
 // only. Note a retried DELETE whose first attempt succeeded server-side can
-// surface ErrNotFound.
+// surface ErrNotFound. 501 is excluded from the 5xx retry bucket: it is a
+// deliberate "not implemented" response, never transient, and is returned
+// once as ErrUnimplemented instead of being retried.
 func (c *Client) Do(ctx context.Context, method, path string, body any, result any) error {
 	var payload []byte
 	if body != nil {
@@ -153,7 +156,10 @@ func (c *Client) Do(ctx context.Context, method, path string, body any, result a
 		case resp.StatusCode == http.StatusNotFound:
 			return fmt.Errorf("%w: %s", ErrNotFound, extractMessage(respBody))
 
-		case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500:
+		case resp.StatusCode == http.StatusNotImplemented:
+			return fmt.Errorf("%w: HTTP 501", ErrUnimplemented)
+
+		case resp.StatusCode == http.StatusTooManyRequests || (resp.StatusCode >= 500 && resp.StatusCode != http.StatusNotImplemented):
 			if attempt == c.maxRetries {
 				if resp.StatusCode == http.StatusTooManyRequests {
 					return ErrRateLimited
