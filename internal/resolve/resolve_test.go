@@ -472,19 +472,15 @@ func TestResolve_ProductNotVisible_ReturnsE2(t *testing.T) {
 	}
 }
 
-// TestResolve_OverrideToken_SeveralWorkspaces_ResolvesWithEmptyWorkspace is
-// the F6m ladder amendment, mirroring the CLI: an explicitly given token
-// (flag/env) must never be refused just because no single workspace could
-// be chosen for it. The pre-TIDEN-68 server started the same way with a
-// token-only env; list_products already reports "workspace_id is required"
-// per call when neither the argument nor this default is set, so deferring
-// the ambiguity to call time (rather than erroring at startup) loses
-// nothing.
-func TestResolve_OverrideToken_SeveralWorkspaces_ResolvesWithEmptyWorkspace(t *testing.T) {
+// TestResolve_OverrideToken_NoBinding_ResolvesWithEmptyWorkspace_ZeroRequests
+// is the F7m ladder amendment (D14 revised), mirroring the CLI:
+// override-token mode is now LOCAL-ONLY. An explicitly given token
+// (flag/env) is never refused for lack of a workspace, but the server also
+// no longer makes any network call to find one - not even to list the
+// token's own workspaces. The fake server below would answer with two
+// workspaces if it were ever asked; noRequestsAllowed proves it never is.
+func TestResolve_OverrideToken_NoBinding_ResolvesWithEmptyWorkspace_ZeroRequests(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/workspaces" {
-			t.Fatalf("unexpected request: %s", r.URL.Path)
-		}
 		_, _ = w.Write([]byte(`{"workspaces":[{"id":"ws-a","name":"A"},{"id":"ws-b","name":"B"}]}`))
 	}))
 	defer srv.Close()
@@ -494,42 +490,61 @@ func TestResolve_OverrideToken_SeveralWorkspaces_ResolvesWithEmptyWorkspace(t *t
 		RepoFile:    &repoconfig.File{},
 		EnvAPIToken: "tok-env",
 		EnvBaseURL:  srv.URL,
-		NewClient:   realClientFactory(2 * time.Second),
+		NewClient:   noRequestsAllowed(t),
 	}
 	got, err := Resolve(context.Background(), deps)
 	if err != nil {
 		t.Fatalf("unexpected error: %v (an override token must never be refused)", err)
 	}
 	if got.WorkspaceID != "" {
-		t.Errorf("WorkspaceID = %q, want empty (several workspaces, none chosen)", got.WorkspaceID)
+		t.Errorf("WorkspaceID = %q, want empty (D14: no binding, no lookup performed)", got.WorkspaceID)
 	}
 	if got.BaseURL != srv.URL || got.APIToken != "tok-env" || got.Source != SourceEnv {
 		t.Errorf("got = %+v, want the override baseUrl/token/source preserved", got)
 	}
 }
 
-// TestResolve_OverrideToken_NoWorkspaces_ResolvesWithEmptyWorkspace covers
-// the "decodes to nothing" half of the same amendment: ListWorkspaces
-// succeeds but lists none.
-func TestResolve_OverrideToken_NoWorkspaces_ResolvesWithEmptyWorkspace(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"workspaces":[]}`))
-	}))
-	defer srv.Close()
-
+// TestResolve_OverrideToken_RepoWorkspaceID_ZeroRequests covers the other
+// local-only signal: a repo-local .tiden/config.json workspaceId still wins
+// over an empty answer, with zero requests either way.
+func TestResolve_OverrideToken_RepoWorkspaceID_ZeroRequests(t *testing.T) {
 	deps := Deps{
 		Store:       &config.Store{},
-		RepoFile:    &repoconfig.File{},
+		RepoFile:    &repoconfig.File{Exists: true, WorkspaceID: "ws-bound"},
 		EnvAPIToken: "tok-env",
-		EnvBaseURL:  srv.URL,
-		NewClient:   realClientFactory(2 * time.Second),
+		EnvBaseURL:  "https://env.example",
+		NewClient:   noRequestsAllowed(t),
 	}
 	got, err := Resolve(context.Background(), deps)
 	if err != nil {
-		t.Fatalf("unexpected error: %v (an override token must never be refused)", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.WorkspaceID != "" || got.BaseURL != srv.URL || got.APIToken != "tok-env" || got.Source != SourceEnv {
-		t.Errorf("got = %+v", got)
+	if got.WorkspaceID != "ws-bound" || got.BaseURL != "https://env.example" || got.APIToken != "tok-env" || got.Source != SourceEnv {
+		t.Errorf("got = %+v, want the repo binding's workspaceId with the override token", got)
+	}
+}
+
+// TestResolve_OverrideToken_RepoProductIDOnly_ResolvesWithEmptyWorkspace_ZeroRequests
+// is the D14 behavior change from F6m: a repo-local productId (with no
+// workspaceId) used to trigger a GetProduct probe in override-token mode;
+// it no longer does. productId is a stored-login-only signal now.
+func TestResolve_OverrideToken_RepoProductIDOnly_ResolvesWithEmptyWorkspace_ZeroRequests(t *testing.T) {
+	deps := Deps{
+		Store:       &config.Store{},
+		RepoFile:    &repoconfig.File{Exists: true, ProductID: "prod-x"},
+		EnvAPIToken: "tok-env",
+		EnvBaseURL:  "https://env.example",
+		NewClient:   noRequestsAllowed(t),
+	}
+	got, err := Resolve(context.Background(), deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.WorkspaceID != "" {
+		t.Errorf("WorkspaceID = %q, want empty (D14: productId alone is not resolved for an override token)", got.WorkspaceID)
+	}
+	if got.BaseURL != "https://env.example" || got.APIToken != "tok-env" || got.Source != SourceEnv {
+		t.Errorf("got = %+v, want the override baseUrl/token/source preserved", got)
 	}
 }
 

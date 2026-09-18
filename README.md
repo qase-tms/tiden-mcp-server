@@ -43,9 +43,15 @@ still works.
 Because one machine can be logged into several workspaces, the server picks
 one **per repository**, in this order — the first that applies wins:
 
-1. `--base-url`/`--api-token` (or `TIDEN_BASE_URL`/`TIDEN_API_TOKEN`) — an
-   explicit override is used as-is.
-2. `--workspace-id`/`TIDEN_WORKSPACE_ID` — selects that workspace's entry.
+1. `--api-token`/`TIDEN_API_TOKEN` (with `--base-url`/`TIDEN_BASE_URL`) — an
+   explicit token override is used exactly as given, with no server lookup
+   at all: its workspace is `--workspace-id`/`TIDEN_WORKSPACE_ID` when set,
+   else the repo-local `.tiden/config.json`'s `workspaceId` when this
+   directory is bound, else left unset (a tool call that needs one and gets
+   none reports that plainly, the same as before TIDEN-68's per-repository
+   resolution existed).
+2. Without a token override: `--workspace-id`/`TIDEN_WORKSPACE_ID` — selects
+   that workspace's entry.
 3. The repo-local `.tiden/config.json` (walked up from the working
    directory) — its `workspaceId`, if bound.
 4. That file's `productId` — looked up against each logged-in account until

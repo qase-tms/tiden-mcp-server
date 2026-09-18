@@ -79,9 +79,10 @@ type Resolved struct {
 // Error is returned when the ladder cannot resolve. Code is one of
 // "NO_LOGIN", "E1", "E2", "E3" - all reserved for the stored-login path
 // (determineTargetWorkspace). An explicit flag/env token (resolveOverrideToken)
-// never produces one: it always resolves, with WorkspaceID left empty when no
-// single workspace could be chosen. The caller prints Message then each Hint
-// on its own line to stderr and exits 2.
+// never produces one: per D14 it is local-only and always resolves, with
+// WorkspaceID left empty when neither the flag/env workspace id nor the repo
+// binding names one. The caller prints Message then each Hint on its own
+// line to stderr and exits 2.
 type Error struct {
 	Code    string
 	Message string
@@ -90,9 +91,12 @@ type Error struct {
 
 func (e *Error) Error() string { return e.Message }
 
-// Resolve runs the ladder. See the package doc and TIDEN-68's ladder
-// specification for the exact order: flag > env > repo binding > product
-// probe > repository lookup > single login.
+// Resolve runs the ladder. An override token (flag/env) is local-only (D14):
+// its workspace is the flag/env workspace id, else the repo binding's
+// workspaceId, else empty - no network call. Absent an override token, the
+// stored-login path applies the full ladder: repo binding > product probe >
+// repository lookup > single login. See the package doc and TIDEN-68's
+// ladder specification for details.
 func Resolve(ctx context.Context, d Deps) (*Resolved, error) {
 	store := d.Store
 	if store == nil {
@@ -311,24 +315,22 @@ func gatherAllLoginWorkspaces(ctx context.Context, d Deps, store *config.Store) 
 }
 
 // resolveOverrideToken implements step 0: a flag/env API token is THE
-// token. The target workspace is found by walking, in order: an explicit
-// flag/env workspace id, the repo binding's workspaceId, a product probe
-// against the repo binding's productId, a repository lookup, and finally
-// the token's sole workspace.
+// token, used exactly as given. D14 (revised): override-token mode is
+// LOCAL-ONLY - the server makes NO network call to pick a workspace for
+// it. The workspace is the flag/env workspace id when given, else the repo
+// binding's workspaceId, else left empty (zero requests either way).
 //
-// An explicitly given token is never refused just because no single
-// workspace could be chosen for it: once none of those steps names exactly
-// one workspace (repository lookup finds none/several/is unavailable, or
-// ListWorkspaces lists zero, several, or fails outright - a rejected token,
-// an unreachable server, anything), Resolve still succeeds, with
-// WorkspaceID left empty. The pre-TIDEN-68 server started the same way with
-// a token-only env, and each tool call that actually needs a workspace
-// already reports "workspace_id is required" when neither its argument nor
-// this default is set - so nothing is lost by deferring the ambiguity past
-// startup instead of erroring here. E1/E2/E3/NO_LOGIN stay reserved for the
-// stored-login path (determineTargetWorkspace); this function never returns
-// one.
-func resolveOverrideToken(ctx context.Context, d Deps, store *config.Store, repoFile *repoconfig.File, token, tokenSrc, baseURL, wsOverride string) (*Resolved, error) {
+// An explicitly given token is never refused for lack of a workspace: when
+// neither signal is present, Resolve still succeeds, with WorkspaceID left
+// empty. This is what the server did before TIDEN-68 (a token-only env just
+// started), it removes startup network calls for the common token-only
+// deployment, and each tool call that actually needs a workspace already
+// reports "workspace_id is required" when neither its argument nor this
+// default is set - so nothing is lost by deferring the ambiguity past
+// startup. No product probe, no repository lookup, no ListWorkspaces: those
+// only run for the stored-login path (determineTargetWorkspace), which also
+// keeps E1/E2/E3/NO_LOGIN unchanged. This function never returns one.
+func resolveOverrideToken(_ context.Context, _ Deps, store *config.Store, repoFile *repoconfig.File, token, tokenSrc, baseURL, wsOverride string) (*Resolved, error) {
 	if baseURL == "" {
 		if l := findLoginByToken(store, token); l != nil {
 			baseURL = l.BaseURL
@@ -340,54 +342,21 @@ func resolveOverrideToken(ctx context.Context, d Deps, store *config.Store, repo
 
 	account := accountForToken(store, token)
 
-	build := func(wsID, wsName string) *Resolved {
-		if wsName == "" {
-			if e, ok := store.Workspaces[wsID]; ok {
-				wsName = e.Name
-			}
+	build := func(wsID string) *Resolved {
+		wsName := ""
+		if e, ok := store.Workspaces[wsID]; ok {
+			wsName = e.Name
 		}
 		return &Resolved{BaseURL: baseURL, APIToken: token, WorkspaceID: wsID, WorkspaceName: wsName, Account: account, Source: tokenSrc}
 	}
 
 	if wsOverride != "" {
-		return build(wsOverride, ""), nil
+		return build(wsOverride), nil
 	}
 	if repoFile.WorkspaceID != "" {
-		return build(repoFile.WorkspaceID, ""), nil
+		return build(repoFile.WorkspaceID), nil
 	}
-
-	// Only the remaining steps need a live client - build it lazily so the
-	// direct token+workspace overrides above stay a true zero-request path.
-	client := d.NewClient(baseURL, token)
-
-	// A GetProduct failure - unauthorized, forbidden, not found, or the
-	// server simply being unreachable - all mean the same thing here: this
-	// step has no answer, so fall through to the next one. Startup must
-	// never abort on a transient network error (see F2).
-	if repoFile.ProductID != "" {
-		if p, err := client.GetProduct(ctx, repoFile.ProductID); err == nil {
-			return build(p.WorkspaceID, ""), nil
-		}
-	}
-
-	if d.RepositoryID != "" {
-		if resp, err := client.ResolveRepository(ctx, d.RepositoryID); err == nil {
-			if candidates := dedupeByProductID(resp.Candidates); len(candidates) == 1 {
-				return build(candidates[0].WorkspaceID, candidates[0].WorkspaceName), nil
-			}
-			// Zero or several candidates: no single answer, fall through.
-		}
-		// ErrUnimplemented, ErrUnauthorized, or any other failure (including
-		// a transport error or a 5xx): this step has no answer, fall through.
-	}
-
-	if resp, err := client.ListWorkspaces(ctx); err == nil && len(resp.Workspaces) == 1 {
-		return build(resp.Workspaces[0].ID, resp.Workspaces[0].Name), nil
-	}
-	// Zero or several workspaces, or the call itself failed (rejected
-	// token, unreachable server, ...): resolve anyway, with no workspace -
-	// see the function doc.
-	return build("", ""), nil
+	return build(""), nil
 }
 
 func e3FromRepositoryCandidates(cs []model.RepositoryCandidate) *Error {
@@ -420,19 +389,6 @@ func e3FromWorkspaceCandidates(cs []wsCandidate) *Error {
 		Message: "This repository needs a choice:\n" + strings.Join(lines, "\n"),
 		Hints:   []string{"tiden workspace use <id>", "tiden product bind --product-id <id>"},
 	}
-}
-
-func dedupeByProductID(cs []model.RepositoryCandidate) []model.RepositoryCandidate {
-	seen := map[string]bool{}
-	var out []model.RepositoryCandidate
-	for _, c := range cs {
-		if seen[c.ProductID] {
-			continue
-		}
-		seen[c.ProductID] = true
-		out = append(out, c)
-	}
-	return out
 }
 
 func findLoginByToken(store *config.Store, token string) *config.Login {
