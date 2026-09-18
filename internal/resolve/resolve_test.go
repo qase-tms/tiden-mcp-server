@@ -113,6 +113,46 @@ func TestResolve_RepoBindingWorkspaceIDBeatsProductID(t *testing.T) {
 	}
 }
 
+// TestResolve_TransportErrorOnProductProbe_FallsThroughInsteadOfAborting is
+// the F2 reviewer fix: startup now makes real API calls to resolve the
+// workspace, so a transient network failure on one of those probes (server
+// down, refused connection) must not abort the whole resolution with a raw
+// transport error - old tiden-mcp-server binaries started fine even when
+// the API was unreachable and only failed per tool call. The probe step
+// must be treated as "unavailable" (skip it) so Resolve still returns a
+// typed *Error the caller can print and exit 2 for, never a bare dial error
+// that falls through main's generic "error: %s" / exit 1 path.
+func TestResolve_TransportErrorOnProductProbe_FallsThroughInsteadOfAborting(t *testing.T) {
+	// A server that is immediately closed: any request to its address is
+	// refused (connection refused), simulating "unreachable".
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	deadURL := srv.URL
+	srv.Close()
+
+	store := &config.Store{
+		Workspaces: map[string]config.Entry{
+			"ws-other": {BaseURL: deadURL, APIToken: "tok-1"},
+		},
+	}
+	deps := Deps{
+		Store:     store,
+		RepoFile:  &repoconfig.File{Exists: true, ProductID: "prod-x"},
+		NewClient: realClientFactory(500 * time.Millisecond),
+	}
+
+	_, err := Resolve(context.Background(), deps)
+	if err == nil {
+		t.Fatal("expected an error (the product is not visible to the one login we have)")
+	}
+	rerr, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("err = %T(%v), want *resolve.Error - a transport error on a probe step must not abort Resolve with a raw error", err, err)
+	}
+	if rerr.Code != "E2" {
+		t.Errorf("Code = %q, want E2", rerr.Code)
+	}
+}
+
 func TestResolve_ProductProbeBeatsRepositoryLookup(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

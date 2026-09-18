@@ -135,25 +135,19 @@ func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, 
 	}
 
 	if repoFile.ProductID != "" {
-		wsID, err := probeProduct(ctx, d, store, repoFile.ProductID)
-		if err != nil {
-			return "", "", err
-		}
+		wsID, unreachable := probeProduct(ctx, d, store, repoFile.ProductID)
 		if wsID != "" {
 			return wsID, SourceProductProbe, nil
 		}
-		return "", "", &Error{
-			Code:    "E2",
-			Message: fmt.Sprintf("Product %s is not visible to any logged-in account.", repoFile.ProductID),
-			Hints:   []string{"tiden setup"},
+		msg := fmt.Sprintf("Product %s is not visible to any logged-in account.", repoFile.ProductID)
+		if unreachable {
+			msg += " (Some accounts could not be reached to check.)"
 		}
+		return "", "", &Error{Code: "E2", Message: msg, Hints: []string{"tiden setup"}}
 	}
 
 	if d.RepositoryID != "" {
-		candidates, unavailable, err := lookupRepository(ctx, d, store)
-		if err != nil {
-			return "", "", err
-		}
+		candidates, unavailable := lookupRepository(ctx, d, store)
 		if !unavailable {
 			switch {
 			case len(candidates) == 1:
@@ -164,10 +158,7 @@ func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, 
 		}
 	}
 
-	candidates, err := gatherAllLoginWorkspaces(ctx, d, store)
-	if err != nil {
-		return "", "", err
-	}
+	candidates := gatherAllLoginWorkspaces(ctx, d, store)
 	switch len(candidates) {
 	case 1:
 		return candidates[0].id, SourceSingleLogin, nil
@@ -218,40 +209,43 @@ func resolveTokenForWorkspace(ctx context.Context, d Deps, store *config.Store, 
 
 // probeProduct calls GetProduct(productID) with each distinct login in
 // order, returning the first success's WorkspaceID. A login that cannot see
-// the product (401/403/404) is skipped; any other error aborts the whole
-// resolution (it is not "not visible", it is unknown).
-func probeProduct(ctx context.Context, d Deps, store *config.Store, productID string) (string, error) {
+// the product (401/403/404) is skipped; so is one whose server could not be
+// reached at all (transport error, 5xx, rate limit) - either way that login
+// simply has no answer, and this step's unavailability shows up only as a
+// less certain "not visible" from the caller (E2), never as a startup
+// crash. unreachable reports whether at least one login hit that second,
+// non-clean-negative case, so the caller can mention it in E2's message.
+func probeProduct(ctx context.Context, d Deps, store *config.Store, productID string) (wsID string, unreachable bool) {
 	for _, login := range store.DistinctLogins() {
 		client := d.NewClient(login.BaseURL, login.APIToken)
 		p, err := client.GetProduct(ctx, productID)
 		if err == nil {
-			return p.WorkspaceID, nil
+			return p.WorkspaceID, false
 		}
-		if errors.Is(err, api.ErrUnauthorized) || errors.Is(err, api.ErrForbidden) || errors.Is(err, api.ErrNotFound) {
-			continue
+		if !isCleanNegative(err) {
+			unreachable = true
 		}
-		return "", err
 	}
-	return "", nil
+	return "", unreachable
 }
 
 // lookupRepository calls ResolveRepository with each distinct login,
 // merging candidates (deduped by ProductID). unavailable=true means an
 // ErrUnimplemented was seen (old server without the route): the caller
 // skips the whole step rather than treating an empty result as "no match".
-func lookupRepository(ctx context.Context, d Deps, store *config.Store) (candidates []model.RepositoryCandidate, unavailable bool, err error) {
+// Any other failure for one login - unauthorized, forbidden, not found, a
+// transport error, a 5xx - just means that login has no answer; the loop
+// keeps trying the rest instead of aborting the whole resolution.
+func lookupRepository(ctx context.Context, d Deps, store *config.Store) (candidates []model.RepositoryCandidate, unavailable bool) {
 	seen := map[string]bool{}
 	for _, login := range store.DistinctLogins() {
 		client := d.NewClient(login.BaseURL, login.APIToken)
-		resp, cerr := client.ResolveRepository(ctx, d.RepositoryID)
-		if cerr != nil {
-			if errors.Is(cerr, api.ErrUnimplemented) {
-				return nil, true, nil
+		resp, err := client.ResolveRepository(ctx, d.RepositoryID)
+		if err != nil {
+			if errors.Is(err, api.ErrUnimplemented) {
+				return nil, true
 			}
-			if errors.Is(cerr, api.ErrUnauthorized) {
-				continue
-			}
-			return nil, false, cerr
+			continue
 		}
 		for _, c := range resp.Candidates {
 			if seen[c.ProductID] {
@@ -261,7 +255,14 @@ func lookupRepository(ctx context.Context, d Deps, store *config.Store) (candida
 			candidates = append(candidates, c)
 		}
 	}
-	return candidates, false, nil
+	return candidates, false
+}
+
+// isCleanNegative reports whether err is a definitive "no" from the server
+// (the login is dead, or it plainly cannot see the resource) rather than a
+// sign the server could not be reached or is misbehaving.
+func isCleanNegative(err error) bool {
+	return errors.Is(err, api.ErrUnauthorized) || errors.Is(err, api.ErrForbidden) || errors.Is(err, api.ErrNotFound) || errors.Is(err, api.ErrUnimplemented)
 }
 
 type wsCandidate struct {
@@ -270,8 +271,10 @@ type wsCandidate struct {
 
 // gatherAllLoginWorkspaces is step (d)'s fallback: every workspace already
 // known via a store entry (zero requests), plus - for any loose login not
-// yet placed under a workspace - whatever ListWorkspaces reports.
-func gatherAllLoginWorkspaces(ctx context.Context, d Deps, store *config.Store) ([]wsCandidate, error) {
+// yet placed under a workspace - whatever ListWorkspaces reports. A loose
+// login whose server cannot be reached, or that rejects the request, simply
+// contributes nothing - it is never treated as a hard failure.
+func gatherAllLoginWorkspaces(ctx context.Context, d Deps, store *config.Store) []wsCandidate {
 	seen := map[string]bool{}
 	var out []wsCandidate
 
@@ -303,7 +306,7 @@ func gatherAllLoginWorkspaces(ctx context.Context, d Deps, store *config.Store) 
 			out = append(out, wsCandidate{id: w.ID, name: w.Name, account: login.Account})
 		}
 	}
-	return out, nil
+	return out
 }
 
 // resolveOverrideToken implements step 0: a flag/env API token is THE
@@ -343,22 +346,18 @@ func resolveOverrideToken(ctx context.Context, d Deps, store *config.Store, repo
 	// direct token+workspace overrides above stay a true zero-request path.
 	client := d.NewClient(baseURL, token)
 
+	// A GetProduct failure - unauthorized, forbidden, not found, or the
+	// server simply being unreachable - all mean the same thing here: this
+	// step has no answer, so fall through to the next one. Startup must
+	// never abort on a transient network error (see F2).
 	if repoFile.ProductID != "" {
-		p, err := client.GetProduct(ctx, repoFile.ProductID)
-		switch {
-		case err == nil:
+		if p, err := client.GetProduct(ctx, repoFile.ProductID); err == nil {
 			return build(p.WorkspaceID, ""), nil
-		case errors.Is(err, api.ErrUnauthorized), errors.Is(err, api.ErrForbidden), errors.Is(err, api.ErrNotFound):
-			// fall through to the next step
-		default:
-			return nil, err
 		}
 	}
 
 	if d.RepositoryID != "" {
-		resp, err := client.ResolveRepository(ctx, d.RepositoryID)
-		switch {
-		case err == nil:
+		if resp, err := client.ResolveRepository(ctx, d.RepositoryID); err == nil {
 			candidates := dedupeByProductID(resp.Candidates)
 			switch len(candidates) {
 			case 1:
@@ -368,11 +367,9 @@ func resolveOverrideToken(ctx context.Context, d Deps, store *config.Store, repo
 					return nil, e3FromRepositoryCandidates(candidates)
 				}
 			}
-		case errors.Is(err, api.ErrUnimplemented), errors.Is(err, api.ErrUnauthorized):
-			// fall through to the next step
-		default:
-			return nil, err
 		}
+		// ErrUnimplemented, ErrUnauthorized, or any other failure (including
+		// a transport error or a 5xx): this step has no answer, fall through.
 	}
 
 	resp, err := client.ListWorkspaces(ctx)
@@ -380,13 +377,24 @@ func resolveOverrideToken(ctx context.Context, d Deps, store *config.Store, repo
 		if errors.Is(err, api.ErrUnauthorized) {
 			return nil, &Error{Code: "E5", Message: "API token was rejected.", Hints: []string{"tiden setup"}}
 		}
-		return nil, err
+		// This is the last step: a transport/5xx error here can't fall
+		// through to anything else, but it must still surface as a typed,
+		// actionable error rather than aborting Resolve outright.
+		return nil, &Error{
+			Code:    "E5",
+			Message: fmt.Sprintf("Could not verify the API token: %s.", err),
+			Hints:   []string{"tiden-mcp-server -workspace-id <id>"},
+		}
 	}
 	switch len(resp.Workspaces) {
 	case 1:
 		return build(resp.Workspaces[0].ID, resp.Workspaces[0].Name), nil
 	case 0:
-		return nil, &Error{Code: "E5", Message: "API token did not resolve to any workspace.", Hints: []string{"tiden setup"}}
+		return nil, &Error{
+			Code:    "E5",
+			Message: "API token did not resolve to any workspace. Pass -workspace-id <id> (or TIDEN_WORKSPACE_ID) to select one.",
+			Hints:   []string{"tiden-mcp-server -workspace-id <id>"},
+		}
 	default:
 		candidates := make([]wsCandidate, len(resp.Workspaces))
 		for i, w := range resp.Workspaces {

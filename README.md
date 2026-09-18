@@ -55,6 +55,12 @@ one **per repository**, in this order — the first that applies wins:
 6. The sole workspace across every logged-in account, when there is exactly
    one.
 
+If the server is started from a directory outside any repository the CLI
+has bound (or without a working directory that resolves to one at all) and
+more than one workspace is stored, none of the steps above can pick one, so
+it exits with the choice list — pass `-workspace-id <id>` (or set
+`TIDEN_WORKSPACE_ID`) in the MCP registration for that case.
+
 This is entirely **read-only**: the server never prompts, never binds a
 repository, and never writes either config file — that stays the CLI's job
 (`tiden setup`, `tiden workspace use`, `tiden product bind`). When none of
