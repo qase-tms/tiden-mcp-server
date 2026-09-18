@@ -1,0 +1,21 @@
+cmd/tiden-mcp-server/main_test.go
+  s_f4b2e66bee9b7b::t_60b2b1ccf82b61 47,119
+cmd/tiden-mcp-server/zz_env_guard_test.go
+  s_f4b2e66bee9b7b::t_9470b1de74ae10 24-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8aaf176fdb10c6cc1446dc36faa406abd6e3fa6f",
+  "prompts": {},
+  "sessions": {
+    "s_f4b2e66bee9b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b21f83d5-1902-474f-b9fc-0bee8f666960",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}
