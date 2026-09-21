@@ -1,0 +1,19 @@
+internal/mcpserver/test_list_test.go
+  s_7f23d388c1e3ac::t_7771f3b361f41e 8,18-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8ec0b108a8d1868b0c6e35078ed90891254130a1",
+  "prompts": {},
+  "sessions": {
+    "s_7f23d388c1e3ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07631-a1b4-7591-97f5-134293de5a43",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

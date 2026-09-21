@@ -1,0 +1,32 @@
+README.md
+  s_c12217fca4565f::t_8a8a3ac12e469c 78-79
+internal/api/session_acceptance.go
+  s_c12217fca4565f::t_a59ed8b615186a 1-12,18-31
+  s_c12217fca4565f::t_c3a5a6496f0129 13-17
+internal/api/session_acceptance_test.go
+  s_c12217fca4565f::t_a59ed8b615186a 1-39
+internal/mcpserver/progress_tools.go
+  s_c12217fca4565f::t_a59ed8b615186a 21,40-65,67-91
+  s_c12217fca4565f::t_c3a5a6496f0129 66
+internal/mcpserver/tools.go
+  s_c12217fca4565f::t_a59ed8b615186a 36
+internal/mcpserver/server_test.go
+  s_c12217fca4565f::t_c3a5a6496f0129 232-252,254-264
+  s_c12217fca4565f::t_a59ed8b615186a 38-39,150-157,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e78811a9e8b50bab7448a950520e13a6682449b2",
+  "prompts": {},
+  "sessions": {
+    "s_c12217fca4565f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019feb9a-95c2-7f50-b531-a084ce66926b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
