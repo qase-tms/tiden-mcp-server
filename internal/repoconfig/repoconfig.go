@@ -31,12 +31,28 @@ type File struct {
 // Find walks up from startDir (up to maxWalkLevels, to the filesystem root)
 // looking for the nearest .tiden/config.json. It returns Exists=false and
 // Path="" when none is found anywhere up the tree.
+//
+// The walk never returns $HOME/.tiden/config.json itself: that file is the
+// CLI's global login/workspace store (internal/config.LoadStore), not a repo
+// binding. A directory under HOME with no .tiden of its own used to have its
+// walk-up reach that global file and read its top-level workspaceId/productId
+// as if they bound the repository — a stray top-level workspaceId there (left
+// by an older binary after the v2 migration) then silently became this
+// repository's "binding" (TIDEN-68 Finding 2026-09-23, F-HOME). The global
+// file is identified the same way internal/config.LoadStore locates it
+// (os.UserHomeDir + .tiden/config.json) and compared by file identity
+// (os.SameFile), not by path string, so a symlinked spelling of HOME (e.g.
+// macOS's /var vs /private/var) is still recognized as the same file.
 func Find(startDir string) (*File, error) {
+	globalInfo := globalStoreInfo()
+
 	dir := startDir
 	for i := 0; i < maxWalkLevels && dir != ""; i++ {
 		p := filepath.Join(dir, ".tiden", "config.json")
-		if _, err := os.Stat(p); err == nil {
-			return Read(p)
+		if info, err := os.Stat(p); err == nil {
+			if globalInfo == nil || !os.SameFile(info, globalInfo) {
+				return Read(p)
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -45,6 +61,21 @@ func Find(startDir string) (*File, error) {
 		dir = parent
 	}
 	return &File{}, nil
+}
+
+// globalStoreInfo returns the os.FileInfo of $HOME/.tiden/config.json (the
+// CLI's global store), or nil when HOME cannot be resolved or the file does
+// not exist there.
+func globalStoreInfo() os.FileInfo {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+	info, err := os.Stat(filepath.Join(home, ".tiden", "config.json"))
+	if err != nil {
+		return nil
+	}
+	return info
 }
 
 // Read parses the file at path. A missing file is not an error: it returns

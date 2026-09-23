@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -141,6 +142,89 @@ func TestResolveConfig_TokenOnlyEnv_StartsWithEmptyWorkspace(t *testing.T) {
 	}
 	if resolved.BaseURL != "https://app.tiden.ai" || resolved.APIToken != "tok-env" || resolved.Source != resolve.SourceEnv {
 		t.Errorf("resolved = {BaseURL:%q Source:%q token:%s}", resolved.BaseURL, resolved.Source, redactToken(resolved.APIToken))
+	}
+}
+
+// TestResolveConfig_HomeGlobalStoreNeverActsAsRepoBinding reproduces
+// TIDEN-68's Finding 2026-09-23 (F-HOME): a global store that also carries a
+// stray top-level workspaceId/productId (left behind by an older binary
+// after the v2 migration) must never be read as if it were this repository's
+// binding just because the walk-up from an unbound directory under HOME
+// reaches it. Before the fix this resolved silently to the stray
+// workspaceId's workspace (source repo-binding); it must instead fall
+// through to the ladder's normal "more than one workspace" outcome (E3).
+func TestResolveConfig_HomeGlobalStoreNeverActsAsRepoBinding(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeHomeConfig(t, home, []byte(`{
+		"version": 2,
+		"workspaceId": "ws-one",
+		"productId": "prod-stray",
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "One"},
+			"ws-two": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "Two"}
+		}
+	}`))
+
+	cwd := filepath.Join(home, "work", "repo")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", cwd).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	var rerr *resolve.Error
+	if !errors.As(err, &rerr) {
+		wsID, source := "<nil>", "<nil>"
+		if resolved != nil {
+			wsID, source = resolved.WorkspaceID, resolved.Source
+		}
+		t.Fatalf("resolveConfig = ({WorkspaceID:%q Source:%q}, %v), want a *resolve.Error (E3 choice) — the global store's stray workspaceId must not resolve as repo-binding", wsID, source, err)
+	}
+	if rerr.Code != "E3" {
+		t.Errorf("Code = %q, want E3", rerr.Code)
+	}
+	if strings.Contains(rerr.Message, "ws-one") && strings.Contains(rerr.Message, resolve.SourceRepoBinding) {
+		t.Errorf("Message = %q, must not read as a repo-binding resolution", rerr.Message)
+	}
+}
+
+// TestResolveConfig_RealRepoBindingUnderHomeStillResolves is the control for
+// the fix above: a repository that has its OWN .tiden/config.json (not the
+// global store reached by walking past it) must still resolve from it, sitting
+// under the very same HOME whose global store carries the stray key.
+func TestResolveConfig_RealRepoBindingUnderHomeStillResolves(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeHomeConfig(t, home, []byte(`{
+		"version": 2,
+		"workspaceId": "ws-one",
+		"productId": "prod-stray",
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "One"},
+			"ws-two": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "Two"}
+		}
+	}`))
+
+	cwd := filepath.Join(home, "work", "repo")
+	if err := os.MkdirAll(filepath.Join(cwd, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cwd, ".tiden", "config.json"), []byte(`{"workspaceId": "ws-two"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", cwd).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.WorkspaceID != "ws-two" || resolved.Source != resolve.SourceRepoBinding {
+		t.Errorf("resolved = {WorkspaceID:%q Source:%q}, want {ws-two, %s}", resolved.WorkspaceID, resolved.Source, resolve.SourceRepoBinding)
 	}
 }
 
