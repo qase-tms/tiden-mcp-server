@@ -228,6 +228,63 @@ func TestResolveConfig_RealRepoBindingUnderHomeStillResolves(t *testing.T) {
 	}
 }
 
+// TestResolveConfig_ForeignAncestorStoreNeverActsAsRepoBinding is TIDEN-68
+// ledger rule D18.1: the identity check alone only knows this process's own
+// HOME. Here HOME points at a fresh, unrelated directory (fakeHome, the only
+// place the real login data lives), while a SEPARATE, store-shaped file sits
+// at an ancestor of cwd (foreignRoot — standing in for a sandboxed HOME, an
+// agent sandbox, sudo, or any other case where the real user's own
+// ~/.tiden/config.json is reachable by walking up even though HOME points
+// elsewhere for this process). That foreign file's stray top-level
+// workspaceId must not be read as this repository's binding.
+func TestResolveConfig_ForeignAncestorStoreNeverActsAsRepoBinding(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	writeHomeConfig(t, fakeHome, []byte(`{
+		"version": 2,
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "One"},
+			"ws-two": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "Two"}
+		}
+	}`))
+
+	foreignRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(foreignRoot, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	foreignBody := []byte(`{
+		"version": 2,
+		"workspaceId": "ws-one",
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-foreign"}
+		}
+	}`)
+	if err := os.WriteFile(filepath.Join(foreignRoot, ".tiden", "config.json"), foreignBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd := filepath.Join(foreignRoot, "work", "proj")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", cwd).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	var rerr *resolve.Error
+	if !errors.As(err, &rerr) {
+		wsID, source := "<nil>", "<nil>"
+		if resolved != nil {
+			wsID, source = resolved.WorkspaceID, resolved.Source
+		}
+		t.Fatalf("resolveConfig = ({WorkspaceID:%q Source:%q}, %v), want a *resolve.Error (E3 choice) — a foreign ancestor store must not resolve as repo-binding", wsID, source, err)
+	}
+	if rerr.Code != "E3" {
+		t.Errorf("Code = %q, want E3", rerr.Code)
+	}
+}
+
 func TestPrintDiagnostic_EmptyWorkspaceRendersSensibly(t *testing.T) {
 	r, w, err := os.Pipe()
 	if err != nil {
