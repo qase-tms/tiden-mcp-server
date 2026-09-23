@@ -32,7 +32,11 @@ type File struct {
 // credential store (tiden-cli's ~/.tiden/config.json, v1 or v2), never a
 // repo binding" - whichever HOME it happens to live under. Kept in lockstep
 // with tiden-cli's own repoconfig walk-up (TIDEN-68 ledger rule D18.1).
-var storeMarkerKeys = []string{"apiToken", "workspaces", "version"}
+// baseUrl and timeout cover a store that holds no token yet: the
+// `{"baseUrl": "..."}` shape the CLI writes before any login exists, and a
+// bare `{"timeout": "..."}`. Neither carries apiToken/workspaces/version, so
+// without these two the content check missed them under a foreign HOME.
+var storeMarkerKeys = []string{"apiToken", "workspaces", "version", "baseUrl", "timeout"}
 
 // Find walks up from startDir (up to maxWalkLevels, to the filesystem root)
 // looking for the nearest .tiden/config.json. It returns Exists=false and

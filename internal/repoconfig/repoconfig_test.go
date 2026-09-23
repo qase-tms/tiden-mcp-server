@@ -287,6 +287,141 @@ func TestFind_PlainBindingFileWithOnlyWorkspaceAndProductIDsStillFound(t *testin
 	}
 }
 
+// TestFind_SkipsForeignStore_BaseURLOnly covers the reviewer's follow-up to
+// D18.1: a store that holds no token yet - the shape the CLI writes for
+// `{"baseUrl": "..."}` before any login exists - carries none of the
+// original storeMarkerKeys (apiToken, workspaces, version). Under a foreign
+// HOME (this process's own HOME is unrelated), such a file at an ancestor of
+// the cwd must still never be read as a repo binding.
+func TestFind_SkipsForeignStore_BaseURLOnly(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+
+	foreignRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(foreignRoot, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(foreignRoot, ".tiden", "config.json"), []byte(`{"baseUrl": "https://app.tiden.ai"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd := filepath.Join(foreignRoot, "work", "proj")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := Find(cwd)
+	if err != nil {
+		t.Fatalf("Find: %v", err)
+	}
+	if f.Exists || f.WorkspaceID != "" {
+		t.Errorf("Find(%q) = %+v, want no binding (a baseUrl-only foreign store must never be read as a repo binding)", cwd, f)
+	}
+}
+
+// TestFind_RealRepoFileBetweenCwdAndForeignBaseURLOnlyStoreStillFound is the
+// control for TestFind_SkipsForeignStore_BaseURLOnly: a real repo-local
+// binding sitting between the cwd and the baseUrl-only foreign store must
+// still be found.
+func TestFind_RealRepoFileBetweenCwdAndForeignBaseURLOnlyStoreStillFound(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+
+	foreignRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(foreignRoot, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(foreignRoot, ".tiden", "config.json"), []byte(`{"baseUrl": "https://app.tiden.ai"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	repoDir := filepath.Join(foreignRoot, "work")
+	if err := os.MkdirAll(filepath.Join(repoDir, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repoDir, ".tiden", "config.json"), []byte(`{"workspaceId": "ws-real"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd := filepath.Join(repoDir, "proj")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := Find(cwd)
+	if err != nil {
+		t.Fatalf("Find: %v", err)
+	}
+	if !f.Exists || f.WorkspaceID != "ws-real" {
+		t.Errorf("Find(%q) = %+v, want the real repo-local file at %s", cwd, f, filepath.Join(repoDir, ".tiden", "config.json"))
+	}
+}
+
+// TestFind_SkipsForeignStore_TimeoutOnly is TestFind_SkipsForeignStore_BaseURLOnly's
+// sibling for the other marker-free store shape the reviewer flagged:
+// `{"timeout": "30s"}` alone.
+func TestFind_SkipsForeignStore_TimeoutOnly(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+
+	foreignRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(foreignRoot, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(foreignRoot, ".tiden", "config.json"), []byte(`{"timeout": "30s"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd := filepath.Join(foreignRoot, "work", "proj")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := Find(cwd)
+	if err != nil {
+		t.Fatalf("Find: %v", err)
+	}
+	if f.Exists || f.WorkspaceID != "" {
+		t.Errorf("Find(%q) = %+v, want no binding (a timeout-only foreign store must never be read as a repo binding)", cwd, f)
+	}
+}
+
+// TestFind_RealRepoFileBetweenCwdAndForeignTimeoutOnlyStoreStillFound is the
+// control for TestFind_SkipsForeignStore_TimeoutOnly.
+func TestFind_RealRepoFileBetweenCwdAndForeignTimeoutOnlyStoreStillFound(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+
+	foreignRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(foreignRoot, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(foreignRoot, ".tiden", "config.json"), []byte(`{"timeout": "30s"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	repoDir := filepath.Join(foreignRoot, "work")
+	if err := os.MkdirAll(filepath.Join(repoDir, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repoDir, ".tiden", "config.json"), []byte(`{"workspaceId": "ws-real"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd := filepath.Join(repoDir, "proj")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := Find(cwd)
+	if err != nil {
+		t.Fatalf("Find: %v", err)
+	}
+	if !f.Exists || f.WorkspaceID != "ws-real" {
+		t.Errorf("Find(%q) = %+v, want the real repo-local file at %s", cwd, f, filepath.Join(repoDir, ".tiden", "config.json"))
+	}
+}
+
 func TestFind_NoFileReturnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	f, err := Find(dir)
