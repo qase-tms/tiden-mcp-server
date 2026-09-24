@@ -18,23 +18,74 @@ go install github.com/qase-tms/tiden-mcp-server/cmd/tiden-mcp-server@latest
 
 ## Configuration
 
-Configuration is resolved from lowest to highest priority:
+If you already configured the `tiden` CLI (`tiden setup`), this server reuses
+the same `~/.tiden/config.json` and needs no configuration of its own — just
+run it from inside the repository the CLI is bound to.
 
-1. `~/.tiden/config.json`
-2. Environment variables: `TIDEN_BASE_URL`, `TIDEN_API_TOKEN`, `TIDEN_WORKSPACE_ID`, `TIDEN_TIMEOUT`
-3. Flags: `--base-url`, `--api-token`, `--workspace-id`, `--timeout`
-
-If you already configured the `tiden` CLI with `tiden setup`, this server can reuse the same `~/.tiden/config.json`.
-
-Example config:
+`~/.tiden/config.json` is workspace-keyed (v2), since one account can belong
+to several workspaces and one machine can hold several accounts:
 
 ```json
 {
-  "baseUrl": "https://app.tiden.ai",
-  "apiToken": "tid_...",
-  "workspaceId": "..."
+  "version": 2,
+  "workspaces": {
+    "1f0a…-work": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_…", "account": "you@company.com", "name": "Work" },
+    "9e3d…-personal": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_…", "account": "me@example.dev", "name": "Personal" }
+  }
 }
 ```
+
+The older flat shape (`{"baseUrl", "apiToken", "workspaceId"}`, one login)
+still works.
+
+### Which workspace?
+
+Because one machine can be logged into several workspaces, the server picks
+one **per repository**, in this order — the first that applies wins:
+
+1. `--api-token`/`TIDEN_API_TOKEN` (with `--base-url`/`TIDEN_BASE_URL`) — an
+   explicit token override is used exactly as given, with no server lookup
+   at all: its workspace is `--workspace-id`/`TIDEN_WORKSPACE_ID` when set,
+   else the repo-local `.tiden/config.json`'s `workspaceId` when this
+   directory is bound, else left unset (a tool call that needs one and gets
+   none reports that plainly, the same as before TIDEN-68's per-repository
+   resolution existed).
+2. Without a token override: `--workspace-id`/`TIDEN_WORKSPACE_ID` — selects
+   that workspace's entry.
+3. The repo-local `.tiden/config.json` (walked up from the working
+   directory) — its `workspaceId`, if bound.
+4. That file's `productId` — looked up against each logged-in account until
+   one can see the product.
+5. The repository's `origin` remote — looked up against the server, if it
+   already knows this repository.
+6. The sole workspace across every logged-in account, when there is exactly
+   one.
+
+If the server is started from a directory outside any repository the CLI
+has bound (or without a working directory that resolves to one at all) and
+more than one workspace is stored, none of the steps above can pick one, so
+it exits with the choice list — pass `-workspace-id <id>` (or set
+`TIDEN_WORKSPACE_ID`) in the MCP registration for that case.
+
+This is entirely **read-only**: the server never prompts, never binds a
+repository, and never writes either config file — that stays the CLI's job
+(`tiden setup`, `tiden workspace use`, `tiden product bind`). When none of
+the above resolves — an unbound repository visible to several accounts, or a
+repository bound to a workspace none of your logged-in accounts belongs to —
+the server prints the reason and a suggested `tiden` command to stderr and
+exits with status 2, instead of starting with no workspace.
+
+On a successful start it prints one line to stderr naming the workspace,
+account and how it was chosen, e.g.:
+
+```
+tiden-mcp-server: workspace Acme Inc (9e3d…) as me@example.dev [repo-binding]
+```
+
+**Upgrade `tiden` and `tiden-mcp-server` together.** An older
+`tiden-mcp-server` binary cannot read the v2 config file (or a repo binding)
+and will fail to start once `tiden setup` has migrated your login — always
+run the two at the same version.
 
 ## Running
 

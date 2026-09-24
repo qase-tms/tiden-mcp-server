@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "timeout": "45s",
+  "workspaces": {
+    "ws-1111": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_shared_token", "account": "me@example.dev", "name": "Personal" }
+  },
+  "skillsBaseUrl": "https://skills.example.dev",
+  "intentCapture": { "capture": "on", "distill": "manual" }
+}

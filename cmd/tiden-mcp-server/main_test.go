@@ -1,0 +1,333 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/qase-tms/tiden-mcp-server/internal/resolve"
+)
+
+func writeHomeConfig(t *testing.T, home string, body []byte) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(home, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".tiden", "config.json"), body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResolveConfig_V2FileWithRepoBinding_FastPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeHomeConfig(t, home, []byte(`{
+		"version": 2,
+		"workspaces": {
+			"ws-1111": {"baseUrl": "https://app.tiden.ai", "apiToken": "tdn_tok", "account": "me@example.dev", "name": "Personal"}
+		}
+	}`))
+
+	cwd := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cwd, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cwd, ".tiden", "config.json"), []byte(`{"workspaceId": "ws-1111"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.WorkspaceID != "ws-1111" || resolved.APIToken != "tdn_tok" || resolved.Source != resolve.SourceRepoBinding {
+		t.Errorf("resolved = {BaseURL:%q WorkspaceID:%q Source:%q token:%s}", resolved.BaseURL, resolved.WorkspaceID, resolved.Source, redactToken(resolved.APIToken))
+	}
+}
+
+func TestResolveConfig_UnresolvedV2File_ReturnsTypedErrorNeverMissingConfigMessage(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	// Two workspace entries, no repo binding anywhere: ambiguous (E3), not
+	// the old "missing required config" message a v2 file used to trigger
+	// (baseUrl/apiToken/workspaceId all live inside workspaces, not at the
+	// top level, so the pre-TIDEN-68 flat Check() always misfired on a v2 file).
+	writeHomeConfig(t, home, []byte(`{
+		"version": 2,
+		"workspaces": {
+			"ws-1111": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "name": "A"},
+			"ws-2222": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-b", "name": "B"}
+		}
+	}`))
+
+	cwd := t.TempDir()
+
+	_, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	var rerr *resolve.Error
+	if !errors.As(err, &rerr) {
+		t.Fatalf("err = %T(%v), want *resolve.Error", err, err)
+	}
+	if rerr.Code != "E3" {
+		t.Errorf("Code = %q, want E3", rerr.Code)
+	}
+	if strings.Contains(err.Error(), "missing required config") {
+		t.Errorf("err = %q, must never repeat the old flat-config message for a v2 file", err.Error())
+	}
+}
+
+func TestResolveConfig_NoLoginFile_ReturnsSetupHint(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home) // no ~/.tiden/config.json at all
+
+	cwd := t.TempDir()
+
+	_, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	var rerr *resolve.Error
+	if !errors.As(err, &rerr) {
+		t.Fatalf("err = %T(%v), want *resolve.Error", err, err)
+	}
+	if rerr.Code != "NO_LOGIN" {
+		t.Errorf("Code = %q, want NO_LOGIN", rerr.Code)
+	}
+	if rerr.Message != "Not logged in. Run `tiden setup`." {
+		t.Errorf("Message = %q", rerr.Message)
+	}
+}
+
+func TestResolveConfig_FlagOverridesFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeHomeConfig(t, home, []byte(`{
+		"version": 2,
+		"workspaces": {
+			"ws-1111": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-file", "name": "File"}
+		}
+	}`))
+	cwd := t.TempDir()
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "https://flag.example", "tok-flag", "ws-flag", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.BaseURL != "https://flag.example" || resolved.APIToken != "tok-flag" || resolved.WorkspaceID != "ws-flag" || resolved.Source != resolve.SourceFlag {
+		t.Errorf("resolved = {BaseURL:%q WorkspaceID:%q Source:%q token:%s}", resolved.BaseURL, resolved.WorkspaceID, resolved.Source, redactToken(resolved.APIToken))
+	}
+}
+
+// TestResolveConfig_TokenOnlyEnv_StartsWithEmptyWorkspace is the F6m ladder
+// amendment: an explicitly given token (TIDEN_API_TOKEN, mirroring the
+// pre-TIDEN-68 token-only-env deployment) must start the server even when
+// no workspace can be chosen for it - never an E5/refusal at startup.
+func TestResolveConfig_TokenOnlyEnv_StartsWithEmptyWorkspace(t *testing.T) {
+	// HOME is already an empty temp dir (TestMain): no ~/.tiden/config.json,
+	// so the only login the ladder knows about is the env override.
+	t.Setenv("TIDEN_API_TOKEN", "tok-env")
+	t.Setenv("TIDEN_BASE_URL", "https://app.tiden.ai")
+
+	cwd := t.TempDir()
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v (a token-only env must never be refused)", err)
+	}
+	if resolved.WorkspaceID != "" {
+		t.Errorf("WorkspaceID = %q, want empty (no repo binding, no product/repository match, no store to probe)", resolved.WorkspaceID)
+	}
+	if resolved.BaseURL != "https://app.tiden.ai" || resolved.APIToken != "tok-env" || resolved.Source != resolve.SourceEnv {
+		t.Errorf("resolved = {BaseURL:%q Source:%q token:%s}", resolved.BaseURL, resolved.Source, redactToken(resolved.APIToken))
+	}
+}
+
+// TestResolveConfig_HomeGlobalStoreNeverActsAsRepoBinding reproduces
+// TIDEN-68's Finding 2026-09-23 (F-HOME): a global store that also carries a
+// stray top-level workspaceId/productId (left behind by an older binary
+// after the v2 migration) must never be read as if it were this repository's
+// binding just because the walk-up from an unbound directory under HOME
+// reaches it. Before the fix this resolved silently to the stray
+// workspaceId's workspace (source repo-binding); it must instead fall
+// through to the ladder's normal "more than one workspace" outcome (E3).
+func TestResolveConfig_HomeGlobalStoreNeverActsAsRepoBinding(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeHomeConfig(t, home, []byte(`{
+		"version": 2,
+		"workspaceId": "ws-one",
+		"productId": "prod-stray",
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "One"},
+			"ws-two": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "Two"}
+		}
+	}`))
+
+	cwd := filepath.Join(home, "work", "repo")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", cwd).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	var rerr *resolve.Error
+	if !errors.As(err, &rerr) {
+		wsID, source := "<nil>", "<nil>"
+		if resolved != nil {
+			wsID, source = resolved.WorkspaceID, resolved.Source
+		}
+		t.Fatalf("resolveConfig = ({WorkspaceID:%q Source:%q}, %v), want a *resolve.Error (E3 choice) — the global store's stray workspaceId must not resolve as repo-binding", wsID, source, err)
+	}
+	if rerr.Code != "E3" {
+		t.Errorf("Code = %q, want E3", rerr.Code)
+	}
+	if strings.Contains(rerr.Message, "ws-one") && strings.Contains(rerr.Message, resolve.SourceRepoBinding) {
+		t.Errorf("Message = %q, must not read as a repo-binding resolution", rerr.Message)
+	}
+}
+
+// TestResolveConfig_RealRepoBindingUnderHomeStillResolves is the control for
+// the fix above: a repository that has its OWN .tiden/config.json (not the
+// global store reached by walking past it) must still resolve from it, sitting
+// under the very same HOME whose global store carries the stray key.
+func TestResolveConfig_RealRepoBindingUnderHomeStillResolves(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeHomeConfig(t, home, []byte(`{
+		"version": 2,
+		"workspaceId": "ws-one",
+		"productId": "prod-stray",
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "One"},
+			"ws-two": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "Two"}
+		}
+	}`))
+
+	cwd := filepath.Join(home, "work", "repo")
+	if err := os.MkdirAll(filepath.Join(cwd, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cwd, ".tiden", "config.json"), []byte(`{"workspaceId": "ws-two"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", cwd).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolved.WorkspaceID != "ws-two" || resolved.Source != resolve.SourceRepoBinding {
+		t.Errorf("resolved = {WorkspaceID:%q Source:%q}, want {ws-two, %s}", resolved.WorkspaceID, resolved.Source, resolve.SourceRepoBinding)
+	}
+}
+
+// TestResolveConfig_ForeignAncestorStoreNeverActsAsRepoBinding is TIDEN-68
+// ledger rule D18.1: the identity check alone only knows this process's own
+// HOME. Here HOME points at a fresh, unrelated directory (fakeHome, the only
+// place the real login data lives), while a SEPARATE, store-shaped file sits
+// at an ancestor of cwd (foreignRoot — standing in for a sandboxed HOME, an
+// agent sandbox, sudo, or any other case where the real user's own
+// ~/.tiden/config.json is reachable by walking up even though HOME points
+// elsewhere for this process). That foreign file's stray top-level
+// workspaceId must not be read as this repository's binding.
+func TestResolveConfig_ForeignAncestorStoreNeverActsAsRepoBinding(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	writeHomeConfig(t, fakeHome, []byte(`{
+		"version": 2,
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "One"},
+			"ws-two": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-a", "account": "m@example.dev", "name": "Two"}
+		}
+	}`))
+
+	foreignRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(foreignRoot, ".tiden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	foreignBody := []byte(`{
+		"version": 2,
+		"workspaceId": "ws-one",
+		"workspaces": {
+			"ws-one": {"baseUrl": "https://app.tiden.ai", "apiToken": "tok-foreign"}
+		}
+	}`)
+	if err := os.WriteFile(filepath.Join(foreignRoot, ".tiden", "config.json"), foreignBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd := filepath.Join(foreignRoot, "work", "proj")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", cwd).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+
+	resolved, _, err := resolveConfig(context.Background(), cwd, "", "", "", "")
+	var rerr *resolve.Error
+	if !errors.As(err, &rerr) {
+		wsID, source := "<nil>", "<nil>"
+		if resolved != nil {
+			wsID, source = resolved.WorkspaceID, resolved.Source
+		}
+		t.Fatalf("resolveConfig = ({WorkspaceID:%q Source:%q}, %v), want a *resolve.Error (E3 choice) — a foreign ancestor store must not resolve as repo-binding", wsID, source, err)
+	}
+	if rerr.Code != "E3" {
+		t.Errorf("Code = %q, want E3", rerr.Code)
+	}
+}
+
+func TestPrintDiagnostic_EmptyWorkspaceRendersSensibly(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	printDiagnostic(w, &resolve.Resolved{
+		BaseURL:  "https://app.tiden.ai",
+		APIToken: "tok-env",
+		Source:   resolve.SourceEnv,
+	})
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	out := string(buf[:n])
+	if !strings.Contains(out, "<none>") {
+		t.Errorf("out = %q, want it to name the missing workspace sensibly (e.g. <none>), not an empty pair of parens", out)
+	}
+	if strings.Contains(out, "()") {
+		t.Errorf("out = %q, must not print an empty (id) pair", out)
+	}
+}
+
+func TestPrintResolutionError_PrintsMessageAndHints(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	printResolutionError(w, &resolve.Error{
+		Message: "This repository is bound to workspace ws-1 (Team), and none of your logged-in accounts is a member.",
+		Hints:   []string{"tiden setup --workspace-id ws-1"},
+	})
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	out := string(buf[:n])
+	if !strings.Contains(out, "This repository is bound to workspace ws-1") {
+		t.Errorf("out = %q, want the message", out)
+	}
+	if !strings.Contains(out, "tiden setup --workspace-id ws-1") {
+		t.Errorf("out = %q, want the hint", out)
+	}
+}

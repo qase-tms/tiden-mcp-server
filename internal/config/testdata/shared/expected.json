@@ -1,0 +1,44 @@
+{
+  "v1": {
+    "fileVersion": 1,
+    "entries": {
+      "ws-aaaa": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_v1_token_aaaa", "account": "", "name": "" }
+    },
+    "loose": [],
+    "extraKeys": []
+  },
+  "v1-no-workspace": {
+    "fileVersion": 1,
+    "entries": {},
+    "loose": [
+      { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_v1_loose_token", "account": "" }
+    ],
+    "extraKeys": []
+  },
+  "v2": {
+    "fileVersion": 2,
+    "entries": {
+      "ws-1111": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_shared_token", "account": "me@example.dev", "name": "Personal" },
+      "ws-2222": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_shared_token", "account": "me@example.dev", "name": "Acme Inc" },
+      "ws-3333": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_other_token", "account": "work@example.dev", "name": "Contractor Co" }
+    },
+    "loose": [],
+    "extraKeys": []
+  },
+  "v2-with-extra-keys": {
+    "fileVersion": 2,
+    "entries": {
+      "ws-1111": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_shared_token", "account": "me@example.dev", "name": "Personal" }
+    },
+    "loose": [],
+    "extraKeys": ["intentCapture", "skillsBaseUrl"]
+  },
+  "mixed-v1-v2": {
+    "fileVersion": 2,
+    "entries": {
+      "ws-9999": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_v2_token", "account": "me@example.dev", "name": "Personal" }
+    },
+    "loose": [],
+    "extraKeys": []
+  }
+}

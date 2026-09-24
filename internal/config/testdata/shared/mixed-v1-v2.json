@@ -1,0 +1,10 @@
+{
+  "baseUrl": "https://old.example.dev",
+  "apiToken": "tdn_stale_flat_token",
+  "workspaceId": "ws-stale",
+  "version": 2,
+  "timeout": "30s",
+  "workspaces": {
+    "ws-9999": { "baseUrl": "https://app.tiden.ai", "apiToken": "tdn_v2_token", "account": "me@example.dev", "name": "Personal" }
+  }
+}

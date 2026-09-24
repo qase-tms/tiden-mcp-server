@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The server resolves its workspace **per repository** instead of from one
+  flat file: it reads the `tiden` CLI's workspace-keyed `~/.tiden/config.json`
+  (still falling back to the older single-login shape), then the repo-local
+  `.tiden/config.json` a `tiden setup`/`tiden workspace use`/`tiden product
+  bind` run left behind, then a product or repository lookup against the
+  server, in the same order the CLI itself resolves. It is read-only — no
+  prompts, no file writes, no migration — and prints the chosen workspace,
+  account and resolution source to stderr on a successful start. A repository
+  that cannot be resolved (bound to a workspace none of your accounts
+  belongs to, or visible to more than one account with no binding yet) now
+  fails loudly with the specific reason and a `tiden` command to fix it,
+  exit code 2, instead of the previous generic "missing required config"
+  message a v2 config file always triggered. Upgrade `tiden` and
+  `tiden-mcp-server` together — an older binary cannot read the v2 file.
+
 ## [0.4.0] - 2026-09-08
 
 ### Added
