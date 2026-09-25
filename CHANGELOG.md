@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The `levels` argument of `list_issues`. tiden-app no longer filters issues
+  by level (production issues are error-only) and rejects a `levels` filter.
+  A call that still passes `levels` is refused as an unknown argument before
+  any request is sent; drop the argument. Each issue's `level` field is still
+  returned.
+
 ## [0.5.0] - 2026-09-24
 
 ### Changed

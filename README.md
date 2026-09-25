@@ -139,7 +139,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `create_test_run` | Create a run (status `new`) to report results into |
 | `abort_test_run` | Abort a run (terminal; skips live-doc sync) |
 | `capture_intent` | Distill a session's product decisions into a reviewable `intent/<date>-<slug>` branch (server-side distiller; may take a few minutes) |
-| `list_issues` | Captured errors for a product, newest activity first (status/environment/release/component/level/platform/period filters, paginated) |
+| `list_issues` | Captured errors for a product, newest activity first (status/environment/release/component/platform/period filters, paginated) |
 | `get_issue` | One issue with its most recent occurrence and symbolicated stack frames |
 | `list_issue_events` | An issue's individual occurrences with release + environment, newest first |
 | `get_issue_event` | One specific occurrence with symbolicated frames — for when the latest event is not the one you care about |

@@ -29,7 +29,6 @@ type listIssuesArgs struct {
 	EnvironmentID string   `json:"environment_id,omitempty" jsonschema:"Environment UUID. Use list_environments to resolve a name such as production."`
 	ReleaseID     string   `json:"release_id,omitempty"     jsonschema:"Release UUID. Use list_releases to resolve a version."`
 	ComponentID   string   `json:"component_id,omitempty"   jsonschema:"Component UUID. Use list_components to resolve a name."`
-	Levels        []string `json:"levels,omitempty"         jsonschema:"Filter by level: fatal, error, warning, info, debug."`
 	Platforms     []string `json:"platforms,omitempty"      jsonschema:"Filter by platform, e.g. go, javascript, python."`
 	Period        string   `json:"period,omitempty"         jsonschema:"Trailing last-seen window: 3m, 1h, 12h, 1d, 7d, 30d. Omit for all time."`
 	Sort          string   `json:"sort,omitempty"           jsonschema:"Sort by last_seen (default), first_seen, or times_seen."`
@@ -40,7 +39,7 @@ type listIssuesArgs struct {
 func registerListIssues(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_issues",
-		Description: "List a product's captured errors (issues), newest activity first. Filter by status, environment, release, component, level, platform, and a trailing time window; sort by recency, age, or event count. Start here when asked what is broken in production. An issue has no environment of its own — filter by environment_id, or call get_issue_event_stats for the split.",
+		Description: "List a product's captured errors (issues), newest activity first. Filter by status, environment, release, component, platform, and a trailing time window; sort by recency, age, or event count. Start here when asked what is broken in production. An issue has no environment of its own — filter by environment_id, or call get_issue_event_stats for the split.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listIssuesArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -54,7 +53,6 @@ func registerListIssues(srv *mcp.Server, client *api.Client) {
 			EnvironmentID: args.EnvironmentID,
 			ReleaseID:     args.ReleaseID,
 			ComponentID:   args.ComponentID,
-			Levels:        args.Levels,
 			Platforms:     args.Platforms,
 			Period:        args.Period,
 			Sort:          args.Sort,
