@@ -17,7 +17,6 @@ type ListIssuesOptions struct {
 	ReleaseID     string
 	ComponentID   string
 	Platforms     []string
-	Levels        []string
 	Period        string
 	Sort          string
 	PageSize      int
@@ -46,9 +45,6 @@ func (c *Client) ListIssues(ctx context.Context, productID string, opts ListIssu
 	}
 	for _, p := range opts.Platforms {
 		q.Add("platforms", p)
-	}
-	for _, l := range opts.Levels {
-		q.Add("levels", l)
 	}
 	if opts.Period != "" {
 		q.Set("period", opts.Period)

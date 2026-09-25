@@ -25,7 +25,6 @@ func TestListIssues_BuildsQuery(t *testing.T) {
 	resp, err := c.ListIssues(context.Background(), "p1", ListIssuesOptions{
 		Status:        "unresolved",
 		EnvironmentID: "e1",
-		Levels:        []string{"error", "fatal"},
 		Period:        "7d",
 		Sort:          "times_seen",
 		PageSize:      25,
@@ -44,9 +43,6 @@ func TestListIssues_BuildsQuery(t *testing.T) {
 	}
 	if got := gotQuery.Get("environmentId"); got != "e1" {
 		t.Errorf("environmentId = %q", got)
-	}
-	if got := gotQuery["levels"]; len(got) != 2 {
-		t.Errorf("levels = %v, want two repeated values", got)
 	}
 	if got := gotQuery.Get("pagination.pageSize"); got != "25" {
 		t.Errorf("pageSize = %q", got)

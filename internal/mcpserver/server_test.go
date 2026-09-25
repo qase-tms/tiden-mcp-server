@@ -236,6 +236,48 @@ func TestCaptureIntentDescriptionMentionsSessionSettlement(t *testing.T) {
 	}
 }
 
+// TestListIssuesOffersNoLevelFilter: tiden-app no longer filters issues by
+// level (TIDEN-113 — production issues are error-only), so list_issues must not
+// advertise a levels argument an agent would pass and silently get ignored.
+func TestListIssuesOffersNoLevelFilter(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if tool.Name != "list_issues" {
+			continue
+		}
+		schema, ok := tool.InputSchema.(map[string]any)
+		if !ok {
+			t.Fatalf("InputSchema is %T, want map[string]any", tool.InputSchema)
+		}
+		props, _ := schema["properties"].(map[string]any)
+		if _, ok := props["platforms"]; !ok {
+			t.Errorf("platforms filter missing from list_issues: %v", props)
+		}
+		if _, ok := props["levels"]; ok {
+			t.Errorf("list_issues still advertises a levels filter")
+		}
+		if strings.Contains(tool.Description, "level") {
+			t.Errorf("description still mentions level filtering: %q", tool.Description)
+		}
+		return
+	}
+	t.Fatal("list_issues tool is not registered")
+}
+
 // TestInputSchemaUnmarshal verifies that the JSON input schema for key tools
 // can be unmarshalled correctly - catching field name mismatches early.
 func TestInputSchemaUnmarshal(t *testing.T) {
