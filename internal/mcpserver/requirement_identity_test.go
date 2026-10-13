@@ -76,7 +76,7 @@ func TestRequirementIdentityTool(t *testing.T) {
 			if tc.view == "identity" {
 				args["page_token"] = "start"
 			}
-			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "list_requirements", Arguments: args})
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "list_specs", Arguments: args})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -93,7 +93,7 @@ func TestRequirementIdentityTool(t *testing.T) {
 			if tc.view == "identity" {
 				identity := body["identities"].([]any)[0].(map[string]any)
 				if _, ok := identity["content"]; ok {
-					t.Fatal("identity became a partial writable requirement")
+					t.Fatal("identity became a partial writable spec")
 				}
 				if body["pagination"].(map[string]any)["nextPageToken"] != "next" {
 					t.Fatal("continuation lost")

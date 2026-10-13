@@ -55,7 +55,7 @@ func registerCaptureIntent(srv *mcp.Server, client *api.Client) {
 			return toolText(fmt.Sprintf("Skipped: %s", resp.SkipReason))
 		}
 		return toolText(fmt.Sprintf(
-			"Created %d + updated %d requirement(s) on branch %s — review with merge-preview.",
+			"Created %d + updated %d spec(s) on branch %s — review with merge-preview.",
 			resp.Created, resp.Updated, resp.IntentBranch,
 		))
 	})

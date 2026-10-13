@@ -31,7 +31,7 @@ type gateCheckArgs struct {
 func registerGateCheck(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate_check",
-		Description: "Compute the Quality Gate verdict for a release, a branch, or current main if neither is given. Returns the verdict status (pass / blocked / not_verified / risk_accepted), the next action to take, the touched requirements with their own next action, the accepted risks, the per-component breakdown, and fix hints. With branch, the verdict answers for what that branch touched: not_verified means work is unfinished (a linked test never ran, or a requirement has no test) rather than broken, and the next action names the run to make or the cases to write. Use this as the 'verify' step, and act on the next action rather than on the status alone.",
+		Description: "Compute the Quality Gate verdict for a release, a branch, or current main if neither is given. Returns the verdict status (pass / blocked / not_verified / risk_accepted), the next action to take, the touched specs with their own next action, the accepted risks, the per-component breakdown, and fix hints. With branch, the verdict answers for what that branch touched: not_verified means work is unfinished (a linked test never ran, or a spec has no test) rather than broken, and the next action names the run to make or the cases to write. Use this as the 'verify' step, and act on the next action rather than on the status alone.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args gateCheckArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -55,7 +55,7 @@ type getVerdictArgs struct {
 func registerGetVerdict(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_verdict",
-		Description: "Read the latest Quality Gate verdict for a release, a branch, or current main without recomputing. Carries the same next action, touched requirements and accepted risks as gate_check.",
+		Description: "Read the latest Quality Gate verdict for a release, a branch, or current main without recomputing. Carries the same next action, touched specs and accepted risks as gate_check.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getVerdictArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -101,7 +101,7 @@ type getTraceabilityArgs struct {
 func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_traceability",
-		Description: "Requirement->test traceability matrix for a release, a branch, or current main: per requirement, its test-coverage state (verified / not_run / no_test) and the linked tests with their latest execution status. Use it to find coverage gaps.",
+		Description: "Spec->test traceability matrix for a release, a branch, or current main: per spec, its test-coverage state (verified / not_run / no_test) and the linked tests with their latest execution status. Use it to find coverage gaps.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTraceabilityArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -205,24 +205,24 @@ func registerUpdateTest(srv *mcp.Server, client *api.Client) {
 	})
 }
 
-// -- link_requirement ----------------------------------------------------------
+// -- link_spec -----------------------------------------------------------------
 
 type linkRequirementArgs struct {
 	TestID        string `json:"test_id"          jsonschema:"Test (case) UUID (required)."`
-	RequirementID string `json:"requirement_id"   jsonschema:"Requirement UUID to link (required)."`
+	RequirementID string `json:"spec_id"          jsonschema:"Spec UUID to link (required)."`
 	Branch        string `json:"branch,omitempty" jsonschema:"Branch name (optional - links are managed on main in v1)."`
 }
 
 func registerLinkRequirement(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "link_requirement",
-		Description: "Link a test case to a requirement, so the requirement counts as covered by that test in the traceability matrix and the gate.",
+		Name:        "link_spec",
+		Description: "Link a test case to a spec, so the spec counts as covered by that test in the traceability matrix and the gate.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args linkRequirementArgs) (*mcp.CallToolResult, any, error) {
 		if args.TestID == "" {
 			return toolError(errMissingField("test_id"))
 		}
 		if args.RequirementID == "" {
-			return toolError(errMissingField("requirement_id"))
+			return toolError(errMissingField("spec_id"))
 		}
 		if err := client.LinkRequirement(ctx, args.TestID, args.RequirementID, args.Branch); err != nil {
 			return toolError(err)

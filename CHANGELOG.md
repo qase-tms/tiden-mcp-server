@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Tiden's product record is now called a *spec* (formerly a
+  *requirement*), and the tools and arguments agents see say so. Tools:
+  `list_requirements` → `list_specs`, `get_requirement` → `get_spec`,
+  `create_requirement` → `create_spec`, `update_requirement` → `update_spec`,
+  `link_requirement` → `link_spec`. Arguments: `link_spec`'s `requirement_id`
+  → `spec_id`; `session_progress`'s `requirement_ids` → `spec_ids`;
+  `record_risk_acceptances`' `requirement_id` → `spec_id`,
+  `acceptances[].requirement_refs` → `spec_refs` and
+  `proposed_test_requirement_refs` → `proposed_test_spec_refs`;
+  `lookup_context`'s `max_requirements` → `max_specs`. Which arguments are
+  required is unchanged. The old names are not kept as aliases, since two tools
+  for one action confuse agents: agents that discover tools at connect time
+  pick up the new names on their own, but permission allowlists naming a tool
+  (e.g. `mcp__tiden__list_requirements`) and scripts or prompts that call one
+  by name must be updated, and a call that passes an old argument name is
+  refused as an unknown argument. Tool descriptions, `capture_intent`'s summary
+  line and `list_specs` validation errors say "spec" too. JSON results are
+  unchanged: they mirror the Tiden public API, where a spec is still the
+  `requirement` resource (`requirements`, `requirementId`).
+
 ## [0.6.0] - 2026-09-25
 
 ### Removed
