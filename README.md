@@ -109,11 +109,11 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_workspaces` | Workspaces the user belongs to |
 | `list_products` | Products in a workspace |
 | `get_product` | Fetch one product by id (name, code, description) |
-| `list_requirements` | Requirements for a product/branch; `view=identity` returns one read-only page of IDs, titles, hashes and source locators (`page_size` 1–200, `page_token` to continue); default remains the full list |
-| `get_requirement` | Fetch one requirement |
+| `list_specs` | Specs for a product/branch; `view=identity` returns one read-only page of IDs, titles, hashes and source locators (`page_size` 1–200, `page_token` to continue); default remains the full list |
+| `get_spec` | Fetch one spec |
 | `lookup_context` | Read context for 1–8 independent plan questions, preserving each item's mappings and diagnostics; creates no session or branch |
-| `create_requirement` | Create a requirement |
-| `update_requirement` | Update a requirement |
+| `create_spec` | Create a spec |
+| `update_spec` | Update a spec |
 | `list_tests` | One page of test suites and cases (default 100); continue with `page_token`, or explicitly traverse detail with `all=true`. `view=identity` is one read-only page of matching fields without bodies/steps/counts; incompatible with `all`. |
 | `get_test` | Fetch one test suite or case |
 | `list_branches` | Branches for a product |
@@ -122,15 +122,15 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_components` | Components for a product |
 | `list_environments` | Deployment environments for a product |
 | `list_releases` | Releases for a product |
-| `gate_check` | Compute a Quality Gate verdict (release, branch, or current main) — status, next action, touched requirements, accepted risks |
+| `gate_check` | Compute a Quality Gate verdict (release, branch, or current main) — status, next action, touched specs, accepted risks |
 | `get_verdict` | Read the latest Quality Gate verdict (release, branch, or current main) |
 | `get_overview` | Current product gate state on main |
-| `get_traceability` | Requirement-to-test traceability matrix (release, branch, or current main) |
-| `session_progress` | Per-requirement progress of one intent session: coverage ladder, session attribution, readiness, next actions (does not start/refine/close the session; that stays CLI-only) |
+| `get_traceability` | Spec-to-test traceability matrix (release, branch, or current main) |
+| `session_progress` | Per-spec progress of one intent session: coverage ladder, session attribution, readiness, next actions (does not start/refine/close the session; that stays CLI-only) |
 | `record_risk_acceptances` | Record one intent session's risk acceptances and test deferrals (does not close the session; that stays CLI-only) |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |
-| `link_requirement` | Link a test case to a requirement |
+| `link_spec` | Link a test case to a spec |
 | `list_test_runs` | List test runs for a product (status/environment/branch/search filters, paginated) |
 | `get_test_run` | Fetch one run by per-product seq number, incl. stats + live-doc sync outcome |
 | `get_run_results` | Flat paginated attempts by default; `summary_view=overview`, `cases`, or `combos` for lean reads (case/combo pages 100, max 200; explicit continuation). `summary=true` without a view retains the full tree. |
@@ -144,11 +144,19 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_issue_events` | An issue's individual occurrences with release + environment, newest first |
 | `get_issue_event` | One specific occurrence with symbolicated frames — for when the latest event is not the one you care about |
 | `get_issue_event_stats` | Occurrence counts over time, last-24h total, and the per-environment split (the only way to learn an issue's environment) |
-| `get_issue_fix_context` | Everything needed to fix one error in one call: frames, implicated repo files, environment split, and the covering tests of the requirements those files implement |
+| `get_issue_fix_context` | Everything needed to fix one error in one call: frames, implicated repo files, environment split, and the covering tests of the specs those files implement |
 | `list_release_issues` | Post-deploy regression check: issues first seen in a release, plus a count of all issues seen during it |
 | `set_issue_status` | Set an issue to unresolved, resolved, or ignored |
 
 All tools return compact JSON matching the Tiden public API response shapes.
+In the API a spec is the `requirement` resource, so results keep requirement
+field names (`requirements`, `requirementId`).
+
+Specs were formerly called *requirements*: up to 0.6.0 the spec tools were
+named `*_requirement(s)` and took `requirement_id`, `requirement_ids`,
+`requirement_refs`, `proposed_test_requirement_refs` and `max_requirements`.
+The old names are no longer registered, so update permission allowlists such
+as `mcp__tiden__list_requirements` (now `mcp__tiden__list_specs`).
 
 Occurrence payloads (the full raw event JSON an SDK sent) are omitted by default
 because they are large enough to swamp an agent's context. `get_issue`,
@@ -160,11 +168,11 @@ symbolicated frames were not enough.
 `lookup_context` accepts `product_id`, optional `branch`, and `items` with stable
 `id`, a focused `question`, and optional `anchors` (`repository` in
 `github.com/org/repo` form plus repository-relative `path`). Optional
-`max_requirements` controls displayed detail (default 12, maximum 40).
+`max_specs` controls displayed detail (default 12, maximum 40).
 
 Use one item per independent behavior or decision. Implementation and tests of
 the same behavior can share context. Keep item mappings in the plan; a combined
-requirement dictionary does not replace them. The result includes an output
+spec dictionary does not replace them. The result includes an output
 schema, `structuredContent`, and compatible JSON text. Partial failures set
 `isError` while preserving successful items. `no_match` means unknown relevance;
 coverage means linked/proposed tests, not passed runs. Unknown branches fail.

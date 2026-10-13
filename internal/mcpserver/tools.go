@@ -132,7 +132,7 @@ func registerGetProduct(srv *mcp.Server, client *api.Client) {
 	})
 }
 
-// -- list_requirements --------------------------------------------------------
+// -- list_specs ---------------------------------------------------------------
 
 type listRequirementsArgs struct {
 	ProductID string `json:"product_id"          jsonschema:"Product ID (required)."`
@@ -144,8 +144,8 @@ type listRequirementsArgs struct {
 
 func registerListRequirements(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "list_requirements",
-		Description: "List requirements for a product/branch. Prefer view=identity for a bounded read-only ID/title/hash/source index; follow its pagination token as needed. Omit view for the compatible full-document list.",
+		Name:        "list_specs",
+		Description: "List specs for a product/branch. Prefer view=identity for a bounded read-only ID/title/hash/source index; follow its pagination token as needed. Omit view for the compatible full-document list. In the API a spec is the `requirement` resource, so results use requirement field names (requirements, requirementId).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listRequirementsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -171,16 +171,16 @@ func registerListRequirements(srv *mcp.Server, client *api.Client) {
 	})
 }
 
-// -- get_requirement ----------------------------------------------------------
+// -- get_spec -----------------------------------------------------------------
 
 type getRequirementArgs struct {
-	ID string `json:"id" jsonschema:"Requirement UUID (required)."`
+	ID string `json:"id" jsonschema:"Spec UUID (required)."`
 }
 
 func registerGetRequirement(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "get_requirement",
-		Description: "Fetch a single requirement by its UUID, including title, description, status, priority, and hierarchy.",
+		Name:        "get_spec",
+		Description: "Fetch a single spec by its UUID, including title, description, status, priority, and hierarchy. In the API a spec is the `requirement` resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getRequirementArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return toolError(errMissingField("id"))
@@ -193,21 +193,21 @@ func registerGetRequirement(srv *mcp.Server, client *api.Client) {
 	})
 }
 
-// -- create_requirement -------------------------------------------------------
+// -- create_spec --------------------------------------------------------------
 
 type createRequirementArgs struct {
 	ProductID   string                         `json:"product_id"           jsonschema:"Product ID (required)."`
-	Title       string                         `json:"title"                jsonschema:"Requirement title (required)."`
+	Title       string                         `json:"title"                jsonschema:"Spec title (required)."`
 	Description string                         `json:"description,omitempty" jsonschema:"Markdown description body (optional)."`
-	ParentID    string                         `json:"parent_id,omitempty"  jsonschema:"UUID of the parent requirement for nested hierarchy (optional)."`
+	ParentID    string                         `json:"parent_id,omitempty"  jsonschema:"UUID of the parent spec for nested hierarchy (optional)."`
 	Branch      string                         `json:"branch,omitempty"     jsonschema:"Branch name. Omit to create on the main branch."`
-	Sources     []model.RequirementSourceInput `json:"sources,omitempty"    jsonschema:"Structured requirement sources/provenance. Omit to leave empty."`
+	Sources     []model.RequirementSourceInput `json:"sources,omitempty"    jsonschema:"Structured spec sources/provenance. Omit to leave empty."`
 }
 
 func registerCreateRequirement(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "create_requirement",
-		Description: "Create a new requirement in a product. Optionally nest it under a parent, create it on a non-main branch, and attach structured sources.",
+		Name:        "create_spec",
+		Description: "Create a new spec in a product. Optionally nest it under a parent, create it on a non-main branch, and attach structured sources.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args createRequirementArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -223,10 +223,10 @@ func registerCreateRequirement(srv *mcp.Server, client *api.Client) {
 	})
 }
 
-// -- update_requirement -------------------------------------------------------
+// -- update_spec --------------------------------------------------------------
 
 type updateRequirementArgs struct {
-	ID            string                          `json:"id"                       jsonschema:"Requirement UUID (required)."`
+	ID            string                          `json:"id"                       jsonschema:"Spec UUID (required)."`
 	Title         string                          `json:"title,omitempty"          jsonschema:"New title (optional - omit to leave unchanged)."`
 	Description   string                          `json:"description,omitempty"    jsonschema:"New markdown description (optional - omit to leave unchanged)."`
 	Status        string                          `json:"status,omitempty"         jsonschema:"New status: Backlog, Active, Review, or Done (optional)."`
@@ -237,8 +237,8 @@ type updateRequirementArgs struct {
 
 func registerUpdateRequirement(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_requirement",
-		Description: "Update an existing requirement's title, description, status, priority, or structured sources. Only supplied fields are changed.",
+		Name:        "update_spec",
+		Description: "Update an existing spec's title, description, status, priority, or structured sources. Only supplied fields are changed.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args updateRequirementArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return toolError(errMissingField("id"))
@@ -317,7 +317,7 @@ type getTestArgs struct {
 func registerGetTest(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_test",
-		Description: "Fetch a single test suite or case by its UUID, including steps, status, priority, and linked requirements.",
+		Description: "Fetch a single test suite or case by its UUID, including steps, status, priority, and linked specs.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTestArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return toolError(errMissingField("id"))
@@ -363,7 +363,7 @@ type createBranchArgs struct {
 func registerCreateBranch(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_branch",
-		Description: "Create a new branch off main in a product. Use branches to isolate requirement and test changes before merging.",
+		Description: "Create a new branch off main in a product. Use branches to isolate spec and test changes before merging.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args createBranchArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -410,7 +410,7 @@ type listComponentsArgs struct {
 func registerListComponents(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_components",
-		Description: "List a product's components with their repository scope. A component is a deployment/architectural unit (a service, or a build-manifest tier such as frontend/backend) that requirements and tests are grouped under; each may carry a repository + path scope (repository/componentPaths/repositoryAliases) mapping it to code.",
+		Description: "List a product's components with their repository scope. A component is a deployment/architectural unit (a service, or a build-manifest tier such as frontend/backend) that specs and tests are grouped under; each may carry a repository + path scope (repository/componentPaths/repositoryAliases) mapping it to code.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listComponentsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))

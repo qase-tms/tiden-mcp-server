@@ -20,10 +20,10 @@ var allExpectedTools = []string{
 	"list_workspaces",
 	"list_products",
 	"get_product",
-	"list_requirements",
-	"get_requirement",
-	"create_requirement",
-	"update_requirement",
+	"list_specs",
+	"get_spec",
+	"create_spec",
+	"update_spec",
 	"list_tests",
 	"get_test",
 	"list_branches",
@@ -40,7 +40,7 @@ var allExpectedTools = []string{
 	"record_risk_acceptances",
 	"create_test",
 	"update_test",
-	"link_requirement",
+	"link_spec",
 	"list_test_runs",
 	"get_test_run",
 	"get_run_results",
@@ -109,6 +109,85 @@ func TestToolRegistry(t *testing.T) {
 	}
 }
 
+// TestToolSurfaceSaysSpec: Tiden's product record is a "spec" (formerly a
+// "requirement"), so no tool name and no argument name an agent sees may carry
+// the old noun, and the old *_requirement(s) tool names must not linger as
+// duplicates. Response field names (requirementId, requirements, …) mirror the
+// REST API, where a spec is still the requirement resource, and are out of
+// scope here.
+func TestToolSurfaceSaysSpec(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestServer()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, serverTransport) }()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatalf("Tools iterator: %v", err)
+		}
+		if strings.Contains(tool.Name, "requirement") {
+			t.Errorf("tool %q still carries the old noun; it is a spec now", tool.Name)
+		}
+		for _, name := range schemaPropertyNames(tool.InputSchema) {
+			if strings.Contains(name, "requirement") {
+				t.Errorf("%s: argument %q still carries the old noun; it is a spec now", tool.Name, name)
+			}
+		}
+		if tool.Name == "record_risk_acceptances" {
+			// The nested rename must not loosen the per-acceptance contract.
+			schema, _ := tool.InputSchema.(map[string]any)
+			props, _ := schema["properties"].(map[string]any)
+			acceptances, _ := props["acceptances"].(map[string]any)
+			items, _ := acceptances["items"].(map[string]any)
+			required, _ := items["required"].([]any)
+			var got []string
+			for _, r := range required {
+				got = append(got, r.(string))
+			}
+			sort.Strings(got)
+			want := []string{"criterion", "evidence", "follow_up", "spec_refs"}
+			if !equalStringSlices(got, want) {
+				t.Errorf("record_risk_acceptances acceptances[]: required = %v, want %v", got, want)
+			}
+		}
+	}
+}
+
+// schemaPropertyNames returns every property name declared anywhere in a JSON
+// schema, nested objects and array items included.
+func schemaPropertyNames(schema any) []string {
+	var names []string
+	var walk func(v any)
+	walk = func(v any) {
+		switch node := v.(type) {
+		case map[string]any:
+			for key, sub := range node {
+				if props, ok := sub.(map[string]any); ok && key == "properties" {
+					for name, prop := range props {
+						names = append(names, name)
+						walk(prop)
+					}
+					continue
+				}
+				walk(sub)
+			}
+		case []any:
+			for _, sub := range node {
+				walk(sub)
+			}
+		}
+	}
+	walk(schema)
+	return names
+}
+
 // TestRiskAcceptanceToolDescription freezes the complete pricing rubric in
 // the top-level description. Some MCP clients show the tool description but
 // collapse nested input-schema descriptions, so keeping R1-R5 only on the
@@ -155,7 +234,7 @@ func TestRiskAcceptanceToolDescription(t *testing.T) {
 
 // TestRecordRiskAcceptancesRequirementIDOptional pins that
 // record_risk_acceptances' description explains both write modes now that
-// the server treats requirement_id as optional: the legacy draft
+// the server treats spec_id as optional: the legacy draft
 // path when it is supplied, and the session-judgements path (with its
 // INTENT_SESSION_NOT_FOUND failure) when it is omitted.
 func TestRecordRiskAcceptancesRequirementIDOptional(t *testing.T) {
@@ -185,9 +264,9 @@ func TestRecordRiskAcceptancesRequirementIDOptional(t *testing.T) {
 		t.Fatal("record_risk_acceptances tool is not registered")
 	}
 	for _, phrase := range []string{
-		"requirement_id is now OPTIONAL",
+		"spec_id is now OPTIONAL",
 		"INTENT_SESSION_NOT_FOUND",
-		"older CLIs and drafts should keep passing requirement_id",
+		"older CLIs and drafts should keep passing spec_id",
 	} {
 		if !strings.Contains(description, phrase) {
 			t.Errorf("description omits %q: %q", phrase, description)
@@ -286,15 +365,15 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 		input string
 	}{
 		{
-			tool:  "list_requirements",
+			tool:  "list_specs",
 			input: `{"product_id": "prod-123", "branch": "feature/xyz"}`,
 		},
 		{
-			tool:  "create_requirement",
+			tool:  "create_spec",
 			input: `{"product_id": "prod-123", "title": "Auth flow", "description": "Describes OAuth flow", "parent_id": "req-456", "branch": "main"}`,
 		},
 		{
-			tool:  "update_requirement",
+			tool:  "update_spec",
 			input: `{"id": "req-789", "title": "New title", "status": "Active", "priority": "High", "branch": "main"}`,
 		},
 		{
@@ -323,11 +402,11 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 		},
 		{
 			tool:  "session_progress",
-			input: `{"product_id": "prod-123", "session_id": "3f0e8c1a-2b4d-4e6f-8a9b-0c1d2e3f4a5b", "requirement_ids": ["req-1", "req-2"], "intent_branch": "intent/2026-08-05-x"}`,
+			input: `{"product_id": "prod-123", "session_id": "3f0e8c1a-2b4d-4e6f-8a9b-0c1d2e3f4a5b", "spec_ids": ["req-1", "req-2"], "intent_branch": "intent/2026-08-05-x"}`,
 		},
 		{
 			tool:  "record_risk_acceptances",
-			input: `{"product_id": "prod-123", "requirement_id": "draft-1", "intent_branch": "intent/2026-08-05-x", "session_id": "3f0e8c1a-2b4d-4e6f-8a9b-0c1d2e3f4a5b", "acceptances": [{"requirement_refs": ["FEED-49"], "criterion": "R1", "evidence": "no sandbox to run this against", "follow_up": "none"}], "proposed_test_requirement_refs": ["FEED-34"]}`,
+			input: `{"product_id": "prod-123", "spec_id": "draft-1", "intent_branch": "intent/2026-08-05-x", "session_id": "3f0e8c1a-2b4d-4e6f-8a9b-0c1d2e3f4a5b", "acceptances": [{"spec_refs": ["FEED-49"], "criterion": "R1", "evidence": "no sandbox to run this against", "follow_up": "none"}], "proposed_test_spec_refs": ["FEED-34"]}`,
 		},
 		{
 			tool:  "list_test_runs",
@@ -407,10 +486,10 @@ func TestToolRequiredFields(t *testing.T) {
 		"whoami":                  {},
 		"list_workspaces":         {},
 		"list_products":           {},
-		"list_requirements":       {"product_id"},
-		"get_requirement":         {"id"},
-		"create_requirement":      {"product_id", "title"},
-		"update_requirement":      {"id"},
+		"list_specs":              {"product_id"},
+		"get_spec":                {"id"},
+		"create_spec":             {"product_id", "title"},
+		"update_spec":             {"id"},
 		"list_tests":              {"product_id"},
 		"get_test":                {"id"},
 		"list_branches":           {"product_id"},
@@ -423,11 +502,11 @@ func TestToolRequiredFields(t *testing.T) {
 		"get_verdict":             {"product_id"},
 		"get_overview":            {"product_id"},
 		"get_traceability":        {"product_id"},
-		"session_progress":        {"product_id", "session_id", "requirement_ids"},
+		"session_progress":        {"product_id", "session_id", "spec_ids"},
 		"record_risk_acceptances": {"product_id", "intent_branch", "session_id"},
 		"create_test":             {"product_id", "title"},
 		"update_test":             {"id"},
-		"link_requirement":        {"test_id", "requirement_id"},
+		"link_spec":               {"test_id", "spec_id"},
 		"list_test_runs":          {"product_id"},
 		"get_test_run":            {"product_id", "run_seq"},
 		"get_run_results":         {"product_id", "run_seq"},
