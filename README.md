@@ -109,8 +109,8 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_workspaces` | Workspaces the user belongs to |
 | `list_products` | Products in a workspace |
 | `get_product` | Fetch one product by id (name, code, description) |
-| `list_specs` | Specs for a product/branch; `view=identity` returns one read-only page of IDs, titles, hashes and source locators (`page_size` 1–200, `page_token` to continue); default remains the full list |
-| `get_spec` | Fetch one spec |
+| `list_specs` | One page of specs (default 100); continue with `page_token`, or explicitly traverse detail with `all=true` (up to 100 pages; a remaining `nextPageToken` means incomplete). `view=identity` is one read-only page of IDs, titles, hashes and source locators; incompatible with `all`. |
+| `get_spec` | Fetch one spec; pass `branch` to read it as that branch sees it |
 | `lookup_context` | Read context for 1–8 independent plan questions, preserving each item's mappings and diagnostics; creates no session or branch |
 | `create_spec` | Create a spec |
 | `update_spec` | Update a spec |
@@ -125,8 +125,8 @@ claude mcp add tiden -- tiden-mcp-server
 | `gate_check` | Compute a Quality Gate verdict (release, branch, or current main) — status, next action, touched specs, accepted risks |
 | `get_verdict` | Read the latest Quality Gate verdict (release, branch, or current main) |
 | `get_overview` | Current product gate state on main |
-| `get_traceability` | Spec-to-test traceability matrix (release, branch, or current main) |
-| `session_progress` | Per-spec progress of one intent session: coverage ladder, session attribution, readiness, next actions (does not start/refine/close the session; that stays CLI-only) |
+| `get_traceability` | Spec-to-test traceability (release, branch, or current main). Default is the summary view: per spec coverage and, when the server sends them, `linked`/`passed`/`failed`/`stale` counts, without tests. `feature_id` limits it to one spec subtree; `include_tests=true` returns the detail view with each linked test. |
+| `session_progress` | Per-spec progress of one intent session: coverage ladder, session attribution, readiness, next actions (does not start/refine/close the session; that stays CLI-only). Rows list the deciding tests plus a `testCount` of all linked tests. |
 | `record_risk_acceptances` | Record one intent session's risk acceptances and test deferrals (does not close the session; that stays CLI-only) |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |

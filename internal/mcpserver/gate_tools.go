@@ -93,24 +93,35 @@ func registerGetOverview(srv *mcp.Server, client *api.Client) {
 // -- get_traceability ----------------------------------------------------------
 
 type getTraceabilityArgs struct {
-	ProductID string `json:"product_id"           jsonschema:"Product ID (required)."`
-	ReleaseID string `json:"release_id,omitempty" jsonschema:"Release UUID. Omit for current main."`
-	Branch    string `json:"branch,omitempty"     jsonschema:"Branch name (e.g. an intent branch). Ignored when release_id is set; omit both for current main."`
+	ProductID    string `json:"product_id"           jsonschema:"Product ID (required)."`
+	ReleaseID    string `json:"release_id,omitempty" jsonschema:"Release UUID. Omit for current main."`
+	Branch       string `json:"branch,omitempty"     jsonschema:"Branch name (e.g. an intent branch). Ignored when release_id is set; omit both for current main."`
+	FeatureID    string `json:"feature_id,omitempty"    jsonschema:"Spec UUID. Limits the answer to that spec and its descendants, with status computed over them only."`
+	IncludeTests bool   `json:"include_tests,omitempty" jsonschema:"Return the detail view with the linked tests of every spec. Default is the summary view without per-test cells. Prefer combining with feature_id."`
 }
 
 func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_traceability",
-		Description: "Spec->test traceability matrix for a release, a branch, or current main: per spec, its test-coverage state (verified / not_run / no_test) and the linked tests with their latest execution status. Use it to find coverage gaps.",
+		Description: "Spec->test traceability for a release, a branch, or current main. By default returns the summary view: per spec, its coverage state (verified / not_run / no_test) and, when the server provides them, linked/passed/failed/stale test counts, without the tests themselves. Use it to find coverage gaps. Pass feature_id to limit it to one spec subtree, and include_tests=true for the detail view with each linked test and its latest execution status (large for a whole product; combine with feature_id).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTraceabilityArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		m, err := client.GetTraceability(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
+		opts := api.TraceabilityOptions{FeatureID: args.FeatureID}
+		if !args.IncludeTests {
+			opts.View = "summary"
+		}
+		r, err := client.GetTraceabilityView(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch, opts)
 		if err != nil {
 			return toolError(err)
 		}
-		return toolResult(m)
+		// A server that ignores the view answers with the full matrix; return
+		// it as is rather than an empty summary.
+		if r.Summary != nil && r.View == "summary" {
+			return toolResult(r.Summary)
+		}
+		return toolResult(r.Matrix)
 	})
 }
 

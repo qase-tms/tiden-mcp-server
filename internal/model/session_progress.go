@@ -42,8 +42,14 @@ type SessionProgressRequirement struct {
 	ProposedOnly bool `json:"proposedOnly,omitempty"`
 	// MovedThisSession marks a requirement whose deciding execution came from
 	// this session (attribution stays visible even when CI green counts).
-	MovedThisSession bool                  `json:"movedThisSession,omitempty"`
-	Tests            []SessionProgressTest `json:"tests,omitempty"`
+	MovedThisSession bool `json:"movedThisSession,omitempty"`
+	// Adopted marks a row outside the requested slice, added because a test
+	// this session ran links to it.
+	Adopted bool `json:"adopted,omitempty"`
+	// TestCount is the number of linked tests; the server sets it when the
+	// request asked for compact tests. Tests then lists only the deciding ones.
+	TestCount int                   `json:"testCount,omitempty"`
+	Tests     []SessionProgressTest `json:"tests,omitempty"`
 }
 
 // SessionProgressTest is one linked test and its latest observed execution.

@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/qase-tms/tiden-mcp-server/internal/model"
 )
@@ -46,13 +48,42 @@ type GetRequirementResponse struct {
 	Requirement model.Requirement `json:"requirement"`
 }
 
-func (c *Client) GetRequirement(ctx context.Context, id string) (*model.Requirement, error) {
+// GetRequirement fetches one requirement. An optional branch asks for that
+// branch's view of the row (its copy-on-write copy when one exists).
+func (c *Client) GetRequirement(ctx context.Context, id string, branch ...string) (*model.Requirement, error) {
 	var resp GetRequirementResponse
 	path := pathf("/v1/requirements/%s", id)
+	if len(branch) > 0 && branch[0] != "" {
+		path += "?" + url.Values{"branch": {branch[0]}}.Encode()
+	}
 	if err := c.Do(ctx, "GET", path, nil, &resp); err != nil {
 		return nil, err
 	}
 	return &resp.Requirement, nil
+}
+
+// ListRequirementsPage fetches exactly one page of full requirements,
+// retaining its continuation token.
+func (c *Client) ListRequirementsPage(ctx context.Context, productID, branch string, pageSize int, pageToken string) (*ListRequirementsResponse, error) {
+	if pageSize == 0 {
+		pageSize = 100
+	}
+	if pageSize < 1 || pageSize > 200 {
+		return nil, fmt.Errorf("page_size must be between 1 and 200")
+	}
+	q := url.Values{}
+	q.Set("pagination.pageSize", strconv.Itoa(pageSize))
+	if pageToken != "" {
+		q.Set("pagination.pageToken", pageToken)
+	}
+	if branch != "" {
+		q.Set("branch", branch)
+	}
+	var resp ListRequirementsResponse
+	if err := c.Do(ctx, "GET", pathf("/v1/products/%s/requirements", productID)+"?"+q.Encode(), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // ListRequirements fetches all requirements for a product/branch, following

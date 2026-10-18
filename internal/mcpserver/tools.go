@@ -137,33 +137,43 @@ func registerGetProduct(srv *mcp.Server, client *api.Client) {
 type listRequirementsArgs struct {
 	ProductID string `json:"product_id"          jsonschema:"Product ID (required)."`
 	Branch    string `json:"branch,omitempty"    jsonschema:"Branch name. Omit for the main branch."`
-	View      string `json:"view,omitempty" jsonschema:"identity returns one read-only page of IDs, titles, hashes and source locators; omitted or detail preserves the full list. Identity objects omit content and must never be reused as updates."`
-	PageSize  int    `json:"page_size,omitempty" jsonschema:"Identity view only: page size, default 100, maximum 200."`
-	PageToken string `json:"page_token,omitempty" jsonschema:"Identity view only: continuation token from the preceding page."`
+	View      string `json:"view,omitempty" jsonschema:"detail (default) returns full documents; identity returns read-only IDs, titles, hashes and source locators without content (always one page, incompatible with all). Identity objects must never be reused as updates."`
+	PageSize  int    `json:"page_size,omitempty" jsonschema:"Specs per page (1-200; defaults to 100)."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken."`
+	All       bool   `json:"all,omitempty" jsonschema:"Explicitly fetch up to 100 pages of 200 specs (detail view only). Cannot combine with paging arguments."`
 }
 
 func registerListRequirements(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_specs",
-		Description: "List specs for a product/branch. Prefer view=identity for a bounded read-only ID/title/hash/source index; follow its pagination token as needed. Omit view for the compatible full-document list. In the API a spec is the `requirement` resource, so results use requirement field names (requirements, requirementId).",
+		Description: "List one page of specs for a product/branch (100 items by default). Continue with pagination.nextPageToken as page_token. Prefer view=identity for a lighter read-only ID/title/hash/source index. Use all=true only for a full detail traversal (up to 100 pages; a remaining nextPageToken means the result is incomplete); identity is always one page and cannot combine with all. In the API a spec is the `requirement` resource, so results use requirement field names (requirements, requirementId).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listRequirementsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
+		if args.All && (args.PageSize != 0 || args.PageToken != "") {
+			return toolError(fmt.Errorf("all cannot be combined with page_size or page_token"))
+		}
+		if args.View != "" && args.View != "detail" && args.View != "identity" {
+			return toolError(fmt.Errorf("view must be detail or identity"))
+		}
 		if args.View == "identity" {
+			if args.All {
+				return toolError(fmt.Errorf("identity is always one page; continue with page_token instead of all"))
+			}
 			resp, err := client.ListRequirementIdentitiesPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
 			if err != nil {
 				return toolError(err)
 			}
 			return toolResult(resp)
 		}
-		if args.View != "" && args.View != "detail" {
-			return toolError(fmt.Errorf("view must be detail or identity"))
+		var resp *api.ListRequirementsResponse
+		var err error
+		if args.All {
+			resp, err = client.ListRequirements(ctx, args.ProductID, args.Branch)
+		} else {
+			resp, err = client.ListRequirementsPage(ctx, args.ProductID, args.Branch, args.PageSize, args.PageToken)
 		}
-		if args.PageSize != 0 || args.PageToken != "" {
-			return toolError(fmt.Errorf("page_size and page_token require view=identity"))
-		}
-		resp, err := client.ListRequirements(ctx, args.ProductID, args.Branch)
 		if err != nil {
 			return toolError(err)
 		}
@@ -174,18 +184,19 @@ func registerListRequirements(srv *mcp.Server, client *api.Client) {
 // -- get_spec -----------------------------------------------------------------
 
 type getRequirementArgs struct {
-	ID string `json:"id" jsonschema:"Spec UUID (required)."`
+	ID     string `json:"id"               jsonschema:"Spec UUID (required)."`
+	Branch string `json:"branch,omitempty" jsonschema:"Branch name. Returns that branch's view of the spec (its copy-on-write copy when one exists). Omit for the main row."`
 }
 
 func registerGetRequirement(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_spec",
-		Description: "Fetch a single spec by its UUID, including title, description, status, priority, and hierarchy. In the API a spec is the `requirement` resource.",
+		Description: "Fetch a single spec by its UUID, including title, description, status, priority, and hierarchy. Pass branch to read the spec as an intent branch sees it. In the API a spec is the `requirement` resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getRequirementArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return toolError(errMissingField("id"))
 		}
-		req, err := client.GetRequirement(ctx, args.ID)
+		req, err := client.GetRequirement(ctx, args.ID, args.Branch)
 		if err != nil {
 			return toolError(err)
 		}

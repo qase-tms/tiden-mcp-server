@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Behavior change:** `list_specs` now returns one page (100 specs by default)
+  instead of the full list. Continue with `page_token`, or pass `all=true` for
+  the former full traversal (up to 100 pages; a remaining `nextPageToken` means
+  the result is incomplete). `page_size` and `page_token` now also work without
+  `view=identity`; `all` cannot be combined with them or with `view=identity`.
+- **Behavior change:** `get_traceability` returns the summary view by default:
+  per spec coverage, and the `linked`, `passed`, `failed` and `stale` counts
+  when the server provides them, without the linked tests. Pass
+  `include_tests=true` for the detail view with each test. The new optional
+  `feature_id` limits the answer to one spec subtree. Against a server that
+  does not support the summary view or the filter, the answer is the full
+  matrix as before.
+- `session_progress` asks the server for compact tests: each spec lists its
+  deciding tests and a `testCount` of all linked tests. Servers without that
+  field return every test, as before.
+- `get_spec` accepts `branch` and returns that branch's view of the spec.
+
 ## [0.7.0] - 2026-10-13
 
 ### Changed

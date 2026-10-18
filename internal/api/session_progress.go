@@ -15,12 +15,16 @@ type SessionProgressQuery struct {
 	// IntentBranch scopes the link overlay to that branch's proposals; empty
 	// means main-view (durable links only).
 	IntentBranch string
+	// CompactTests asks the server to list only the deciding tests per
+	// requirement and report the linked-test count.
+	CompactTests bool
 }
 
 type sessionProgressRequest struct {
 	SessionID      string   `json:"sessionId"`
 	RequirementIDs []string `json:"requirementIds"`
 	IntentBranch   string   `json:"intentBranch,omitempty"`
+	CompactTests   bool     `json:"compactTests,omitempty"`
 }
 
 // GetSessionProgress returns the per-requirement progress of one intent

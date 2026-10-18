@@ -102,3 +102,22 @@ func TestGetSessionProgressOmitsEmptyIntentBranch(t *testing.T) {
 		t.Errorf("request body = %s, want %s", gotBody, wantBody)
 	}
 }
+
+// TestGetSessionProgressSendsCompactTests pins the compactTests field name.
+func TestGetSessionProgressSendsCompactTests(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := io.ReadAll(r.Body)
+		gotBody = string(data)
+		_, _ = w.Write([]byte(`{"summary": {}}`))
+	}))
+	defer srv.Close()
+	if _, err := newTestClient(srv.URL).GetSessionProgress(context.Background(), "p1", SessionProgressQuery{
+		SessionID: "s1", RequirementIDs: []string{"r1"}, CompactTests: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"sessionId":"s1","requirementIds":["r1"],"compactTests":true}`; gotBody != want {
+		t.Errorf("request body = %s, want %s", gotBody, want)
+	}
+}
