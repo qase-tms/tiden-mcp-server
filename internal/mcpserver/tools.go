@@ -448,7 +448,7 @@ func registerHoldIntent(srv *mcp.Server, client *api.Client) {
 			"Pass clear=true to release the current hold. " +
 			"A branch that is already merged cannot be held (BRANCH_NOT_OPEN). " +
 			"Returns autoMerge: the state of the automatic merge after the change, including holdUntil, holdReason and heldByName. " +
-			"This tool does not merge a branch and does not reopen one.",
+			"A branch Tiden closed as abandoned opens again when it is held. This tool never merges a branch.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args holdIntentArgs) (*mcp.CallToolResult, any, error) {
 		if args.BranchID == "" {
 			return toolError(errMissingField("branch_id"))
