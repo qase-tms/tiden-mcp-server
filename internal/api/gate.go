@@ -32,7 +32,29 @@ type verdictResponse struct {
 }
 
 type traceabilityResponse struct {
-	Matrix model.TraceabilityMatrix `json:"matrix"`
+	Matrix  model.TraceabilityMatrix   `json:"matrix"`
+	Summary *model.TraceabilitySummary `json:"summary,omitempty"`
+	View    string                     `json:"view,omitempty"`
+}
+
+// TraceabilityOptions narrows a traceability read.
+type TraceabilityOptions struct {
+	// View is "summary" for rows without per-test cells; empty keeps the
+	// complete matrix (the default of the API).
+	View string
+	// SubjectType is "feature" (one spec subtree) or "component"; empty means
+	// no filter. SubjectID is the UUID it names.
+	SubjectType string
+	SubjectID   string
+}
+
+// TraceabilityResult is the answer of GetTraceabilityView. Summary is set only
+// when the server returned the summary view. A server that does not know the
+// requested view or filter ignores it and answers with the full matrix.
+type TraceabilityResult struct {
+	Matrix  model.TraceabilityMatrix
+	Summary *model.TraceabilitySummary
+	View    string
 }
 
 // ComputeVerdict (re)computes and persists the gate verdict. scope "main" =
@@ -63,15 +85,25 @@ func (c *Client) GetVerdict(ctx context.Context, productID, scope, releaseID, br
 	return &resp.Verdict, nil
 }
 
-// GetTraceability returns the requirement->test matrix the verdict was computed over.
-func (c *Client) GetTraceability(ctx context.Context, productID, scope, releaseID, branch string) (*model.TraceabilityMatrix, error) {
+// GetTraceabilityView reads the requirement->test matrix the verdict was
+// computed over, with a view and an optional feature or component subject.
+// A server that does not know a query field ignores it, so it may answer
+// with the complete matrix.
+func (c *Client) GetTraceabilityView(ctx context.Context, productID, scope, releaseID, branch string, opts TraceabilityOptions) (*TraceabilityResult, error) {
 	q := gateQueryValues(scope, releaseID, branch)
+	if opts.View != "" {
+		q.Set("view", opts.View)
+	}
+	if opts.SubjectType != "" && opts.SubjectID != "" {
+		q.Set("subjectType", opts.SubjectType)
+		q.Set("subjectId", opts.SubjectID)
+	}
 	var resp traceabilityResponse
 	path := pathf("/v1/products/%s/quality-gate/traceability", productID) + "?" + q.Encode()
 	if err := c.Do(ctx, "GET", path, nil, &resp); err != nil {
 		return nil, err
 	}
-	return &resp.Matrix, nil
+	return &TraceabilityResult{Matrix: resp.Matrix, Summary: resp.Summary, View: resp.View}, nil
 }
 
 // gateQueryValues builds the scope query params for verdict/traceability

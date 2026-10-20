@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,9 +26,11 @@ func TestGetSessionProgress(t *testing.T) {
 		    "coverage": "failing", "proposedOnly": true, "movedThisSession": true,
 		    "tests": [{
 		      "testId": "t1", "display": "QA-3", "title": "reports progress",
-		      "status": "failed", "fromSession": true, "runSeq": 42, "proposed": true
-		    }]
+		      "status": "failed", "fromSession": true, "runSeq": 42, "proposed": true, "signature": "go/pkg::TestX"
+		    }],
+		    "canonicalId": "m1", "testCount": 1
 		  }],
+		  "intentBranchStatus": "open", "freshnessApplied": true,
 		  "summary": {"total": 3, "verified": 1, "failing": 1, "notRun": 0, "noTest": 1},
 		  "ready": false,
 		  "nextActions": ["fix the failing test and re-run"]
@@ -50,31 +53,35 @@ func TestGetSessionProgress(t *testing.T) {
 		t.Errorf("request body = %s, want %s", gotBody, wantBody)
 	}
 
-	if len(resp.Requirements) != 1 {
-		t.Fatalf("requirements = %+v", resp.Requirements)
+	// The response is passed through as sent, including fields this client
+	// has no struct for.
+	var got struct {
+		Requirements []struct {
+			RequirementID string `json:"requirementId"`
+			CanonicalID   string `json:"canonicalId"`
+			Coverage      string `json:"coverage"`
+			Tests         []struct {
+				Signature string `json:"signature"`
+				RunSeq    int    `json:"runSeq"`
+			} `json:"tests"`
+		} `json:"requirements"`
+		IntentBranchStatus string `json:"intentBranchStatus"`
+		FreshnessApplied   bool   `json:"freshnessApplied"`
+		Ready              bool   `json:"ready"`
 	}
-	req := resp.Requirements[0]
-	if req.RequirementID != "r1" || req.Display != "QA-57" || req.Coverage != "failing" ||
-		!req.ProposedOnly || !req.MovedThisSession {
+	if err := json.Unmarshal(resp, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got.Requirements) != 1 {
+		t.Fatalf("requirements = %s", resp)
+	}
+	req := got.Requirements[0]
+	if req.RequirementID != "r1" || req.CanonicalID != "m1" || req.Coverage != "failing" ||
+		len(req.Tests) != 1 || req.Tests[0].Signature != "go/pkg::TestX" || req.Tests[0].RunSeq != 42 {
 		t.Errorf("requirement decode = %+v", req)
 	}
-	if len(req.Tests) != 1 {
-		t.Fatalf("tests = %+v", req.Tests)
-	}
-	tc := req.Tests[0]
-	if tc.TestID != "t1" || tc.Display != "QA-3" || tc.Status != "failed" ||
-		!tc.FromSession || tc.RunSeq != 42 || !tc.Proposed {
-		t.Errorf("test decode = %+v", tc)
-	}
-	if resp.Summary.Total != 3 || resp.Summary.Verified != 1 || resp.Summary.Failing != 1 ||
-		resp.Summary.NotRun != 0 || resp.Summary.NoTest != 1 {
-		t.Errorf("summary = %+v", resp.Summary)
-	}
-	if resp.Ready {
-		t.Error("ready must decode false")
-	}
-	if len(resp.NextActions) != 1 || resp.NextActions[0] != "fix the failing test and re-run" {
-		t.Errorf("nextActions = %v", resp.NextActions)
+	if got.IntentBranchStatus != "open" || !got.FreshnessApplied || got.Ready {
+		t.Errorf("top-level fields = %s", resp)
 	}
 }
 
@@ -100,5 +107,24 @@ func TestGetSessionProgressOmitsEmptyIntentBranch(t *testing.T) {
 	wantBody := `{"sessionId":"s1","requirementIds":["r1"]}`
 	if gotBody != wantBody {
 		t.Errorf("request body = %s, want %s", gotBody, wantBody)
+	}
+}
+
+// TestGetSessionProgressSendsCompactTests pins the compactTests field name.
+func TestGetSessionProgressSendsCompactTests(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := io.ReadAll(r.Body)
+		gotBody = string(data)
+		_, _ = w.Write([]byte(`{"summary": {}}`))
+	}))
+	defer srv.Close()
+	if _, err := newTestClient(srv.URL).GetSessionProgress(context.Background(), "p1", SessionProgressQuery{
+		SessionID: "s1", RequirementIDs: []string{"r1"}, CompactTests: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"sessionId":"s1","requirementIds":["r1"],"compactTests":true}`; gotBody != want {
+		t.Errorf("request body = %s, want %s", gotBody, want)
 	}
 }

@@ -109,8 +109,8 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_workspaces` | Workspaces the user belongs to |
 | `list_products` | Products in a workspace |
 | `get_product` | Fetch one product by id (name, code, description) |
-| `list_specs` | Specs for a product/branch; `view=identity` returns one read-only page of IDs, titles, hashes and source locators (`page_size` 1–200, `page_token` to continue); default remains the full list |
-| `get_spec` | Fetch one spec |
+| `list_specs` | One page of specs: 25 full documents by default (identity view: 100 rows), `page_size` 1–200. Continue with `page_token` and keep `page_size` the same across calls (tokens are page offsets). `all=true` traverses the detail view (up to 100 pages of 200; a remaining `nextPageToken` means incomplete). `view=identity` is one read-only page of IDs, titles, hashes and source locators, the right tool for existence checks; incompatible with `all`. |
+| `get_spec` | Fetch one spec; pass `branch` to read it as that branch sees it |
 | `lookup_context` | Read context for 1–8 independent plan questions, preserving each item's mappings and diagnostics; creates no session or branch |
 | `create_spec` | Create a spec |
 | `update_spec` | Update a spec |
@@ -125,8 +125,8 @@ claude mcp add tiden -- tiden-mcp-server
 | `gate_check` | Compute a Quality Gate verdict (release, branch, or current main) — status, next action, touched specs, accepted risks |
 | `get_verdict` | Read the latest Quality Gate verdict (release, branch, or current main) |
 | `get_overview` | Current product gate state on main |
-| `get_traceability` | Spec-to-test traceability matrix (release, branch, or current main) |
-| `session_progress` | Per-spec progress of one intent session: coverage ladder, session attribution, readiness, next actions (does not start/refine/close the session; that stays CLI-only) |
+| `get_traceability` | Spec-to-test traceability (release, branch, or current main). With no scope it returns a per-component rollup: status, spec counts per coverage state, and the display refs and ids of specs that are not verified (up to 50 per component, then a count). `feature_id` (spec UUID, subtree) or `component_id` (component UUID) returns one summary row per spec, with `linked`/`passed`/`failed`/`stale` counts when the server sends them. `include_tests=true` returns each linked test and needs `feature_id` or `component_id`. When the server ignores the filter, the tool filters client-side and marks the output `featureFilter`/`componentFilter: "client"` (component status is then component-wide). |
+| `session_progress` | Per-spec progress of one intent session: coverage ladder, session attribution, readiness, next actions (does not start/refine/close the session; that stays CLI-only). Each spec lists up to 20 failing tests, then up to 5 others, plus `testCount`; `all_tests=true` lists every test. The server response is passed through unchanged. |
 | `record_risk_acceptances` | Record one intent session's risk acceptances and test deferrals (does not close the session; that stays CLI-only) |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |

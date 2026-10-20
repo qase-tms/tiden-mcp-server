@@ -125,10 +125,11 @@ func TestGetTraceabilityBranchQueryAndDecode(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(srv.URL)
-	m, err := client.GetTraceability(context.Background(), "p1", "branch", "", "intent/2026-08-05-x")
+	res, err := client.GetTraceabilityView(context.Background(), "p1", "branch", "", "intent/2026-08-05-x", TraceabilityOptions{})
 	if err != nil {
-		t.Fatalf("GetTraceability: %v", err)
+		t.Fatalf("GetTraceabilityView: %v", err)
 	}
+	m := res.Matrix
 	if len(m.Components) != 1 || m.Components[0].Repository != "example-org/checkout" {
 		t.Errorf("components = %+v", m.Components)
 	}

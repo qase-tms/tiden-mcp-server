@@ -163,6 +163,38 @@ type TraceabilityMatrix struct {
 	Components []MatrixComponent `json:"components"`
 }
 
+// TraceabilitySummary is the summary view of the matrix: the same components
+// and requirements without per-test cells.
+type TraceabilitySummary struct {
+	Components []SummaryComponent `json:"components"`
+}
+
+type SummaryComponent struct {
+	ComponentID  string               `json:"componentId"`
+	Name         string               `json:"name"`
+	Status       string               `json:"status"`
+	ResidualRisk *float64             `json:"residualRisk,omitempty"`
+	Ceiling      *int                 `json:"ceiling,omitempty"`
+	Repository   string               `json:"repository,omitempty"`
+	Requirements []SummaryRequirement `json:"requirements"`
+}
+
+// SummaryRequirement is one summary row. The count fields are pointers so an
+// older server that does not send them is passed through as absent, not as 0.
+type SummaryRequirement struct {
+	RequirementID string `json:"requirementId"`
+	Display       string `json:"display"`
+	Title         string `json:"title,omitempty"`
+	ParentID      string `json:"parentId,omitempty"`
+	BranchStatus  string `json:"branchStatus,omitempty"`
+	CanonicalID   string `json:"canonicalId,omitempty"`
+	Coverage      string `json:"coverage"`
+	Linked        *int   `json:"linked,omitempty"`
+	Passed        *int   `json:"passed,omitempty"`
+	Failed        *int   `json:"failed,omitempty"`
+	Stale         *int   `json:"stale,omitempty"`
+}
+
 type MatrixComponent struct {
 	ComponentID  string              `json:"componentId"`
 	Name         string              `json:"name"`

@@ -16,7 +16,7 @@ import (
 )
 
 // Exercise the registered tool end to end: identity is one page with an
-// explicit continuation, defaults remain full, and malformed/old-server answers
+// explicit continuation, the detail default is one bounded page, and malformed/old-server answers
 // never masquerade as identities with empty document bodies.
 func TestRequirementIdentityTool(t *testing.T) {
 	for _, tc := range []struct {
@@ -27,11 +27,11 @@ func TestRequirementIdentityTool(t *testing.T) {
 	}{
 		{name: "identity", view: "identity", requests: 1},
 		{name: "custom_page", view: "identity", size: 20, requests: 1},
-		{name: "legacy_default", requests: 1},
+		{name: "detail_default_page", requests: 1},
 		{name: "legacy_detail", view: "detail", requests: 1},
 		{name: "unknown_view", view: "unknown", wantError: true},
 		{name: "oversize", view: "identity", size: 201, wantError: true},
-		{name: "paging_without_identity", size: 20, wantError: true},
+		{name: "paging_in_detail", size: 20, requests: 1},
 		{name: "old_server", view: "identity", old: true, wantError: true, requests: 1},
 		{name: "missing_hash", view: "identity", malformed: true, wantError: true, requests: 1},
 	} {
