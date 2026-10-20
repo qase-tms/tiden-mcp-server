@@ -13,6 +13,47 @@ type Branch struct {
 	Status      string `json:"status"`
 	CreatedAt   string `json:"createdAt"`
 	UpdatedAt   string `json:"updatedAt"`
+
+	// AutoMerge is where the automatic merge of an intent branch stands.
+	// Nil for a branch the server reports no automatic-merge state for
+	// (every branch from an older server).
+	AutoMerge *AutoMerge `json:"autoMerge,omitempty"`
+	// MergeMode says how a merged branch was merged (for example
+	// "auto" or "checkpoint"); empty for an open branch or an older server.
+	MergeMode string `json:"mergeMode,omitempty"`
+	// MergedByName is the display name of whoever, or whatever, merged the
+	// branch.
+	MergedByName string `json:"mergedByName,omitempty"`
+	// ContinuesBranchID is the merged branch this branch picks up from.
+	ContinuesBranchID string `json:"continuesBranchId,omitempty"`
+}
+
+// AutoMerge describes the automatic merge of an intent branch. State is kept as
+// a plain string so a state a newer server adds still decodes and reaches the
+// agent unchanged. Known states: in_progress, countdown, closing, partial,
+// merged, checkpoint_merged, abandoned, off. Timestamps are RFC 3339 strings,
+// like every other timestamp in this package.
+type AutoMerge struct {
+	State string `json:"state"`
+	// Reason is a machine-readable code for why the branch still waits.
+	Reason       string `json:"reason,omitempty"`
+	ReasonDetail string `json:"reasonDetail,omitempty"`
+	// NextCheckAt is the time the branch merges automatically after.
+	NextCheckAt string `json:"nextCheckAt,omitempty"`
+	// HoldUntil is when the latest hold ends. It stays set after the hold has
+	// ended, so compare it with the current time.
+	HoldUntil  string `json:"holdUntil,omitempty"`
+	HoldReason string `json:"holdReason,omitempty"`
+	HeldByName string `json:"heldByName,omitempty"`
+	// HoldSource is who set the hold: "agent" or "person".
+	HoldSource string `json:"holdSource,omitempty"`
+	// OpenPromises lists the texts of the promises still open on a partly
+	// delivered intent.
+	OpenPromises []string `json:"openPromises,omitempty"`
+	// PartialUntil is when a partly delivered intent merges what shipped.
+	PartialUntil        string `json:"partialUntil,omitempty"`
+	SuccessorBranchID   string `json:"successorBranchId,omitempty"`
+	SuccessorBranchName string `json:"successorBranchName,omitempty"`
 }
 
 type ListBranchesResponse struct {
@@ -33,6 +74,9 @@ type MergePreviewResponse struct {
 	Modifications []any       `json:"modifications"`
 	Deletions     []any       `json:"deletions"`
 	Stats         *MergeStats `json:"stats"`
+	// AutoMerge is the branch's automatic-merge state; nil from an older
+	// server.
+	AutoMerge *AutoMerge `json:"autoMerge,omitempty"`
 }
 
 type MergeStats struct {
@@ -65,6 +109,35 @@ func (c *Client) GetMergePreview(ctx context.Context, branchID string) (*MergePr
 	var resp MergePreviewResponse
 	path := pathf("/v1/branches/%s/merge-preview", branchID)
 	if err := c.Do(ctx, "GET", path, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// SetIntentHoldRequest is the body of POST /v1/branches/{branch_id}/intent-hold.
+type SetIntentHoldRequest struct {
+	// Until is when the hold ends (RFC 3339). Required unless Clear is set.
+	Until string `json:"until,omitempty"`
+	// Reason says why the branch is held. Required unless Clear is set.
+	Reason string `json:"reason,omitempty"`
+	// Clear releases the current hold instead of setting one.
+	Clear bool `json:"clear,omitempty"`
+	// Source records who set the hold: "agent" or "person".
+	Source string `json:"source,omitempty"`
+}
+
+// SetIntentHoldResponse carries the branch's automatic-merge state after the
+// hold was set or released.
+type SetIntentHoldResponse struct {
+	AutoMerge *AutoMerge `json:"autoMerge"`
+}
+
+// SetIntentHold sets or releases the hold that stops the automatic merge of an
+// intent branch.
+func (c *Client) SetIntentHold(ctx context.Context, branchID string, body SetIntentHoldRequest) (*SetIntentHoldResponse, error) {
+	var resp SetIntentHoldResponse
+	path := pathf("/v1/branches/%s/intent-hold", branchID)
+	if err := c.Do(ctx, "POST", path, body, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

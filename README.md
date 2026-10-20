@@ -116,9 +116,10 @@ claude mcp add tiden -- tiden-mcp-server
 | `update_spec` | Update a spec |
 | `list_tests` | One page of test suites and cases (default 100); continue with `page_token`, or explicitly traverse detail with `all=true`. `view=identity` is one read-only page of matching fields without bodies/steps/counts; incompatible with `all`. |
 | `get_test` | Fetch one test suite or case |
-| `list_branches` | Branches for a product |
+| `list_branches` | Branches for a product. An intent branch carries `autoMerge` (where its automatic merge stands); a merged branch carries `mergeMode` and `mergedByName` |
 | `create_branch` | Create a branch off main |
-| `get_merge_preview` | Read-only preview of a branch merge |
+| `get_merge_preview` | Read-only preview of a branch merge, with the branch's `autoMerge` state |
+| `hold_intent` | Hold or release the automatic merge of an intent branch: `branch_id`, `reason`, and `for` (`3d`, `12h`; default `7d`) or `until` (RFC 3339), or `clear=true` to release. Returns the `autoMerge` state |
 | `list_components` | Components for a product |
 | `list_environments` | Deployment environments for a product |
 | `list_releases` | Releases for a product |
@@ -162,6 +163,28 @@ Occurrence payloads (the full raw event JSON an SDK sent) are omitted by default
 because they are large enough to swamp an agent's context. `get_issue`,
 `list_issue_events` and `get_issue_event` take `include_payload: true` when the
 symbolicated frames were not enough.
+
+### Automatic intent merge
+
+Tiden merges a finished intent branch by itself about 24 hours after its last
+linked pull request merges. `list_branches` and `get_merge_preview` return the
+branch's `autoMerge` object: `state` (`in_progress`, `countdown`, `closing`,
+`partial`, `merged`, `checkpoint_merged`, `abandoned` or `off`; a state a newer
+server adds is passed through as a string), `reason` and `reasonDetail` (why it
+still waits), `nextCheckAt` (it merges automatically after this time),
+`holdUntil`, `holdReason`, `heldByName` and `holdSource` (the latest hold),
+`openPromises` and `partialUntil` (a partly delivered intent), and
+`successorBranchId` and `successorBranchName` (after a checkpoint merge).
+`holdUntil` stays set after a hold has ended, so compare it with the current
+time. A merged branch also carries `mergeMode`, `mergedByName` and
+`continuesBranchId`.
+
+Call `hold_intent` before handing back when more pull requests for the same
+intent are planned. A hold stops every automatic-merge timer until it ends; the
+timers then count again from that time. The server decides the longest hold it
+accepts and refuses a hold that ends in the past. A merged branch cannot be
+held. `hold_intent` always records the hold as set by an agent, and it neither
+merges nor reopens a branch.
 
 ### Planning context
 
