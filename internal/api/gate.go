@@ -42,8 +42,10 @@ type TraceabilityOptions struct {
 	// View is "summary" for rows without per-test cells; empty keeps the
 	// complete matrix (the default of the API).
 	View string
-	// FeatureID limits the answer to one spec subtree.
-	FeatureID string
+	// SubjectType is "feature" (one spec subtree) or "component"; empty means
+	// no filter. SubjectID is the UUID it names.
+	SubjectType string
+	SubjectID   string
 }
 
 // TraceabilityResult is the answer of GetTraceabilityView. Summary is set only
@@ -83,28 +85,18 @@ func (c *Client) GetVerdict(ctx context.Context, productID, scope, releaseID, br
 	return &resp.Verdict, nil
 }
 
-// GetTraceability returns the requirement->test matrix the verdict was computed over.
-func (c *Client) GetTraceability(ctx context.Context, productID, scope, releaseID, branch string) (*model.TraceabilityMatrix, error) {
-	q := gateQueryValues(scope, releaseID, branch)
-	var resp traceabilityResponse
-	path := pathf("/v1/products/%s/quality-gate/traceability", productID) + "?" + q.Encode()
-	if err := c.Do(ctx, "GET", path, nil, &resp); err != nil {
-		return nil, err
-	}
-	return &resp.Matrix, nil
-}
-
-// GetTraceabilityView is GetTraceability with a view and an optional feature
-// subtree. Fields the server does not know are dropped by the host, so an old
-// server answers with the complete matrix.
+// GetTraceabilityView reads the requirement->test matrix the verdict was
+// computed over, with a view and an optional feature or component subject.
+// A server that does not know a query field ignores it, so it may answer
+// with the complete matrix.
 func (c *Client) GetTraceabilityView(ctx context.Context, productID, scope, releaseID, branch string, opts TraceabilityOptions) (*TraceabilityResult, error) {
 	q := gateQueryValues(scope, releaseID, branch)
 	if opts.View != "" {
 		q.Set("view", opts.View)
 	}
-	if opts.FeatureID != "" {
-		q.Set("subjectType", "feature")
-		q.Set("subjectId", opts.FeatureID)
+	if opts.SubjectType != "" && opts.SubjectID != "" {
+		q.Set("subjectType", opts.SubjectType)
+		q.Set("subjectId", opts.SubjectID)
 	}
 	var resp traceabilityResponse
 	path := pathf("/v1/products/%s/quality-gate/traceability", productID) + "?" + q.Encode()

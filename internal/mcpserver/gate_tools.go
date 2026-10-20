@@ -2,10 +2,12 @@ package mcpserver
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/qase-tms/tiden-mcp-server/internal/api"
+	"github.com/qase-tms/tiden-mcp-server/internal/model"
 )
 
 // scopeFor picks the verdict scope: a release id -> release scope, else a
@@ -93,22 +95,46 @@ func registerGetOverview(srv *mcp.Server, client *api.Client) {
 // -- get_traceability ----------------------------------------------------------
 
 type getTraceabilityArgs struct {
-	ProductID    string `json:"product_id"           jsonschema:"Product ID (required)."`
-	ReleaseID    string `json:"release_id,omitempty" jsonschema:"Release UUID. Omit for current main."`
-	Branch       string `json:"branch,omitempty"     jsonschema:"Branch name (e.g. an intent branch). Ignored when release_id is set; omit both for current main."`
-	FeatureID    string `json:"feature_id,omitempty"    jsonschema:"Spec UUID. Limits the answer to that spec and its descendants, with status computed over them only."`
-	IncludeTests bool   `json:"include_tests,omitempty" jsonschema:"Return the detail view with the linked tests of every spec. Default is the summary view without per-test cells. Prefer combining with feature_id."`
+	ProductID    string `json:"product_id"              jsonschema:"Product ID (required)."`
+	ReleaseID    string `json:"release_id,omitempty"    jsonschema:"Release UUID. Omit for current main."`
+	Branch       string `json:"branch,omitempty"        jsonschema:"Branch name (e.g. an intent branch). Ignored when release_id is set; omit both for current main."`
+	FeatureID    string `json:"feature_id,omitempty"    jsonschema:"Spec UUID (the id field of get_spec or list_specs, not a display reference such as QA-12). Limits the answer to that spec and its descendants. Not combinable with component_id."`
+	ComponentID  string `json:"component_id,omitempty"  jsonschema:"Component UUID (componentId from the default rollup). Limits the answer to that component. Not combinable with feature_id."`
+	IncludeTests bool   `json:"include_tests,omitempty" jsonschema:"Return the detail view with the linked tests of every spec in scope. Requires feature_id or component_id."`
 }
 
 func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "get_traceability",
-		Description: "Spec->test traceability for a release, a branch, or current main. By default returns the summary view: per spec, its coverage state (verified / not_run / no_test) and, when the server provides them, linked/passed/failed/stale test counts, without the tests themselves. Use it to find coverage gaps. Pass feature_id to limit it to one spec subtree, and include_tests=true for the detail view with each linked test and its latest execution status (large for a whole product; combine with feature_id).",
+		Name: "get_traceability",
+		Description: "Spec->test traceability for a release, a branch, or current main. Output size depends on the scope. " +
+			"With neither feature_id nor component_id it returns a per-component rollup (view=rollup): per component its id, name and status, the number of specs per coverage state (verified / not_run / no_test), and the display reference (e.g. QA-12), id and coverage of each spec that is not verified (up to 50 per component, then notVerifiedMore with the remaining count). Use it to find coverage gaps, then scope down. " +
+			"With feature_id (a spec UUID; the spec and its descendants) or component_id (a component UUID) it returns one summary row per spec in that scope (view=summary): display, title, coverage and, when the server provides them, linked/passed/failed/stale test counts. " +
+			"include_tests=true returns the detail view (view=detail) for that scope with each linked test and its latest execution status; it requires feature_id or component_id because a whole product does not fit the output limit. " +
+			"If the server does not apply feature_id or component_id, the tool filters the rows itself and sets featureFilter or componentFilter to \"client\"; component status is then component-wide, not computed over the filtered rows only.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTraceabilityArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		opts := api.TraceabilityOptions{FeatureID: args.FeatureID}
+		if err := validateSubjectID("feature_id", args.FeatureID); err != nil {
+			return toolError(err)
+		}
+		if err := validateSubjectID("component_id", args.ComponentID); err != nil {
+			return toolError(err)
+		}
+		if args.FeatureID != "" && args.ComponentID != "" {
+			return toolError(fmt.Errorf("pass feature_id or component_id, not both"))
+		}
+		scoped := args.FeatureID != "" || args.ComponentID != ""
+		if args.IncludeTests && !scoped {
+			return toolError(fmt.Errorf("include_tests requires feature_id or component_id; call without it first to get the rollup"))
+		}
+		opts := api.TraceabilityOptions{}
+		switch {
+		case args.FeatureID != "":
+			opts.SubjectType, opts.SubjectID = "feature", args.FeatureID
+		case args.ComponentID != "":
+			opts.SubjectType, opts.SubjectID = "component", args.ComponentID
+		}
 		if !args.IncludeTests {
 			opts.View = "summary"
 		}
@@ -116,12 +142,46 @@ func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 		if err != nil {
 			return toolError(err)
 		}
-		// A server that ignores the view answers with the full matrix; return
-		// it as is rather than an empty summary.
-		if r.Summary != nil && r.View == "summary" {
-			return toolResult(r.Summary)
+		out := traceabilityOutput{}
+		dropped := false
+		if args.IncludeTests {
+			m := r.Matrix
+			if args.FeatureID != "" {
+				m, dropped = filterMatrixToFeature(m, args.FeatureID)
+			} else {
+				m, dropped = filterMatrixToComponent(m, args.ComponentID)
+			}
+			out.View, out.Components = "detail", m.Components
+		} else {
+			// A server that ignores view=summary answers with the full matrix;
+			// strip its cells so the output stays small.
+			var s model.TraceabilitySummary
+			if r.Summary != nil && r.View == "summary" {
+				s = *r.Summary
+			} else {
+				s = summaryFromMatrix(r.Matrix)
+			}
+			switch {
+			case args.FeatureID != "":
+				s, dropped = filterSummaryToFeature(s, args.FeatureID)
+			case args.ComponentID != "":
+				s, dropped = filterSummaryToComponent(s, args.ComponentID)
+			}
+			if scoped {
+				out.View, out.Components = "summary", s.Components
+			} else {
+				out.View, out.Components = "rollup", rollup(s)
+			}
 		}
-		return toolResult(r.Matrix)
+		if dropped {
+			if args.FeatureID != "" {
+				out.FeatureFilter = "client"
+			} else {
+				out.ComponentFilter = "client"
+			}
+			out.Note = clientFilterNote
+		}
+		return toolResult(out)
 	})
 }
 

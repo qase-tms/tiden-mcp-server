@@ -15,12 +15,13 @@ type sessionProgressArgs struct {
 	SessionID      string   `json:"session_id"              jsonschema:"Intent session UUID whose runs count as 'from this session' (required)."`
 	RequirementIDs []string `json:"spec_ids"                jsonschema:"Spec UUIDs in the session's scope (required, non-empty). Typically the session's retrieved specs plus its draft."`
 	IntentBranch   string   `json:"intent_branch,omitempty" jsonschema:"Intent branch name; includes that branch's proposed test links in coverage. Omit for durable (main) links only."`
+	AllTests       bool     `json:"all_tests,omitempty"     jsonschema:"List every linked test of every spec. Default false: each spec lists at most 20 failing tests, then at most 5 others, plus testCount."`
 }
 
 func registerSessionProgress(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "session_progress",
-		Description: "Per-spec progress for one intent session: coverage on the ladder no_test -> not_run -> failing -> verified, whether the deciding tests came from this session, overall readiness, and next actions. Each spec lists its deciding tests and a testCount of all linked tests. Call after reporting test results to see what moved and what still blocks readiness. " +
+		Description: "Per-spec progress for one intent session: coverage on the ladder no_test -> not_run -> failing -> verified, whether the deciding tests came from this session, overall readiness, and next actions. By default each spec lists up to 20 failing tests, then up to 5 other tests, plus a testCount of all linked tests; pass all_tests=true to list every linked test (large for wide scopes). Servers that predate compact tests always list every test. Call after reporting test results to see what moved and what still blocks readiness. " +
 			"This does NOT start, refine, or close the session: the intent lifecycle stays CLI-only, because closing grades against the local git diff and the session record in `~/.tiden/sessions/<id>.json`, neither of which this server has — use this tool to read where a session stands, and `tiden intent close` to act on it.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args sessionProgressArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
@@ -36,7 +37,7 @@ func registerSessionProgress(srv *mcp.Server, client *api.Client) {
 			SessionID:      args.SessionID,
 			RequirementIDs: args.RequirementIDs,
 			IntentBranch:   args.IntentBranch,
-			CompactTests:   true,
+			CompactTests:   !args.AllTests,
 		})
 		if err != nil {
 			return toolError(err)

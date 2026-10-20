@@ -138,15 +138,15 @@ type listRequirementsArgs struct {
 	ProductID string `json:"product_id"          jsonschema:"Product ID (required)."`
 	Branch    string `json:"branch,omitempty"    jsonschema:"Branch name. Omit for the main branch."`
 	View      string `json:"view,omitempty" jsonschema:"detail (default) returns full documents; identity returns read-only IDs, titles, hashes and source locators without content (always one page, incompatible with all). Identity objects must never be reused as updates."`
-	PageSize  int    `json:"page_size,omitempty" jsonschema:"Specs per page (1-200; defaults to 100)."`
-	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken."`
+	PageSize  int    `json:"page_size,omitempty" jsonschema:"Specs per page (1-200). Default 25 for the detail view, 100 for identity. Keep the same value on every call that carries a page_token: tokens are page offsets, so changing it skips or repeats specs."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken. Valid only with the page_size of the call that returned it."`
 	All       bool   `json:"all,omitempty" jsonschema:"Explicitly fetch up to 100 pages of 200 specs (detail view only). Cannot combine with paging arguments."`
 }
 
 func registerListRequirements(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_specs",
-		Description: "List one page of specs for a product/branch (100 items by default). Continue with pagination.nextPageToken as page_token. Prefer view=identity for a lighter read-only ID/title/hash/source index. Use all=true only for a full detail traversal (up to 100 pages; a remaining nextPageToken means the result is incomplete); identity is always one page and cannot combine with all. In the API a spec is the `requirement` resource, so results use requirement field names (requirements, requirementId).",
+		Description: "List one page of specs for a product/branch (25 full documents by default for the detail view, 100 rows for identity; the detail page is small because full bodies are large). Continue with pagination.nextPageToken as page_token, and keep page_size the same on every call of one traversal: tokens are page offsets, so a different page_size skips or repeats specs. For existence checks, duplicate detection or a spec index, use view=identity (IDs, titles, hashes, source locators) or lookup_context instead of reading full documents. Use all=true only for a full detail traversal (up to 100 pages; a remaining nextPageToken means the result is incomplete); identity is always one page and cannot combine with all. In the API a spec is the `requirement` resource, so results use requirement field names (requirements, requirementId).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listRequirementsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -276,7 +276,7 @@ type listTestsArgs struct {
 	ProductID string `json:"product_id"       jsonschema:"Product ID (required)."`
 	Branch    string `json:"branch,omitempty" jsonschema:"Branch name. Omit for the main branch."`
 	PageSize  int    `json:"page_size,omitempty" jsonschema:"Tests per page (1–200; defaults to 100)."`
-	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Continuation token from pagination.nextPageToken. Valid only with the page_size of the call that returned it."`
 	All       bool   `json:"all,omitempty" jsonschema:"Explicitly fetch up to 100 pages of 200 tests. Cannot combine with paging arguments."`
 	View      string `json:"view,omitempty" jsonschema:"detail (default) or identity (read-only matching fields without bodies, steps or counts; always one page, incompatible with all)."`
 }

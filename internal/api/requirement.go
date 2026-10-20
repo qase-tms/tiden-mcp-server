@@ -62,11 +62,16 @@ func (c *Client) GetRequirement(ctx context.Context, id string, branch ...string
 	return &resp.Requirement, nil
 }
 
+// DefaultSpecPageSize is the detail page size when the caller gives none.
+// Full spec bodies are large; 100 per page can exceed an agent's tool output
+// limit.
+const DefaultSpecPageSize = 25
+
 // ListRequirementsPage fetches exactly one page of full requirements,
 // retaining its continuation token.
 func (c *Client) ListRequirementsPage(ctx context.Context, productID, branch string, pageSize int, pageToken string) (*ListRequirementsResponse, error) {
 	if pageSize == 0 {
-		pageSize = 100
+		pageSize = DefaultSpecPageSize
 	}
 	if pageSize < 1 || pageSize > 200 {
 		return nil, fmt.Errorf("page_size must be between 1 and 200")

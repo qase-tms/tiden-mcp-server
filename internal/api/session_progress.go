@@ -2,8 +2,7 @@ package api
 
 import (
 	"context"
-
-	"github.com/qase-tms/tiden-mcp-server/internal/model"
+	"encoding/json"
 )
 
 // SessionProgressQuery parameterizes GetSessionProgress. RequirementIDs is the
@@ -30,12 +29,13 @@ type sessionProgressRequest struct {
 // GetSessionProgress returns the per-requirement progress of one intent
 // session: coverage ladder, session attribution, readiness, and next actions.
 // POST with a body (the `:compute` precedent) - requirement ids ride in the
-// body, not the URL.
-func (c *Client) GetSessionProgress(ctx context.Context, productID string, q SessionProgressQuery) (*model.SessionProgress, error) {
+// body, not the URL. The response is returned as the server sent it, so
+// fields added server-side reach the agent without a client change.
+func (c *Client) GetSessionProgress(ctx context.Context, productID string, q SessionProgressQuery) (json.RawMessage, error) {
 	body := sessionProgressRequest(q)
-	var resp model.SessionProgress
+	var resp json.RawMessage
 	if err := c.Do(ctx, "POST", pathf("/v1/products/%s/quality-gate:session-progress", productID), body, &resp); err != nil {
 		return nil, err
 	}
-	return &resp, nil
+	return resp, nil
 }

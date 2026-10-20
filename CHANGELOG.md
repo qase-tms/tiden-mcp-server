@@ -9,21 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Behavior change:** `list_specs` now returns one page (100 specs by default)
-  instead of the full list. Continue with `page_token`, or pass `all=true` for
-  the former full traversal (up to 100 pages; a remaining `nextPageToken` means
-  the result is incomplete). `page_size` and `page_token` now also work without
-  `view=identity`; `all` cannot be combined with them or with `view=identity`.
-- **Behavior change:** `get_traceability` returns the summary view by default:
-  per spec coverage, and the `linked`, `passed`, `failed` and `stale` counts
-  when the server provides them, without the linked tests. Pass
-  `include_tests=true` for the detail view with each test. The new optional
-  `feature_id` limits the answer to one spec subtree. Against a server that
-  does not support the summary view or the filter, the answer is the full
-  matrix as before.
-- `session_progress` asks the server for compact tests: each spec lists its
-  deciding tests and a `testCount` of all linked tests. Servers without that
-  field return every test, as before.
+- **Behavior change:** `list_specs` now returns one page instead of the full
+  list: 25 full documents by default (identity view: 100 rows), at most 200.
+  Continue with `page_token`, and keep `page_size` the same on every call of one
+  traversal, because the server's tokens are page offsets. Pass `all=true` for
+  the former full traversal (up to 100 pages of 200; a remaining
+  `nextPageToken` means the result is incomplete). `page_size` and `page_token`
+  now also work without `view=identity`; `all` cannot be combined with them or
+  with `view=identity`. For existence checks and indexes use `view=identity` or
+  `lookup_context`.
+- **Behavior change:** `get_traceability` output is sized for an agent's
+  context.
+  - With neither `feature_id` nor `component_id` it returns a per-component
+    rollup (`view: "rollup"`): component id, name and status, the number of
+    specs per coverage state, and the display reference, id and coverage of the
+    specs that are not verified (up to 50 per component, then
+    `notVerifiedMore`).
+  - `feature_id` (a spec UUID; the spec and its descendants) or the new
+    `component_id` returns one summary row per spec (`view: "summary"`), with
+    `linked`, `passed`, `failed` and `stale` counts when the server provides
+    them.
+  - `include_tests=true` returns the detail view with each linked test, and now
+    requires `feature_id` or `component_id`; a whole-product detail matrix no
+    longer fits the output limit.
+  - `feature_id` and `component_id` must be UUIDs. A display reference such as
+    `QA-12` is rejected with a pointer to `get_spec` / `list_specs`.
+  - A server that does not apply the filter (the current hosted API ignores
+    `feature_id`) returns the whole product. The tool then filters the rows
+    itself and sets `featureFilter` or `componentFilter` to `"client"`;
+    component status is then component-wide, not computed over the filtered
+    rows only. A server that does not support the summary view answers with the
+    full matrix, which the tool reduces to the same summary shape.
+- `session_progress` asks the server for compact tests: each spec lists up to 20
+  failing tests, then up to 5 others, plus a `testCount` of all linked tests.
+  The new `all_tests=true` lists every linked test. Servers without compact
+  tests return every test. The server response is now passed through unchanged,
+  so fields such as `canonicalId`, `stale`, `intentBranchStatus`,
+  `freshnessApplied` and the test `signature` reach the agent.
 - `get_spec` accepts `branch` and returns that branch's view of the spec.
 
 ## [0.7.0] - 2026-10-13
