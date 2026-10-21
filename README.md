@@ -119,7 +119,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_branches` | Branches for a product. An intent branch carries `autoMerge` (where its automatic merge stands); a merged branch carries `mergeMode` and `mergedByName` |
 | `create_branch` | Create a branch off main |
 | `get_merge_preview` | Read-only preview of a branch merge, with the branch's `autoMerge` state |
-| `hold_intent` | Hold or release the automatic merge of an intent branch: `branch_id`, `reason`, and `for` (`3d`, `12h`; default `7d`) or `until` (RFC 3339), or `clear=true` to release. Returns the `autoMerge` state |
+| `hold_intent` | Hold or release the automatic merge of an intent branch: `branch_id`, `reason`, and `for` (`3d`, `12h`; default `7d`) or `until` (RFC 3339), or `clear=true` to release. A hold an agent sets lasts at most 7 days. Returns the `autoMerge` state |
 | `list_components` | Components for a product |
 | `list_environments` | Deployment environments for a product |
 | `list_releases` | Releases for a product |
@@ -183,9 +183,10 @@ time. A merged branch also carries `mergeMode`, `mergedByName` and
 
 Call `hold_intent` before handing back when more pull requests for the same
 intent are planned. A hold stops every automatic-merge timer until it ends; the
-timers then count again from that time. The server decides the longest hold it
-accepts and refuses a hold that ends in the past. A merged branch cannot be
-held. `hold_intent` always records the hold as set by an agent. A hold on a
+timers then count again from that time. A hold an agent sets lasts at most 7 days;
+the server refuses a longer one, and one that ends in the past. A person can
+hold an intent for up to 30 days from the branch page. A merged branch cannot
+be held. `hold_intent` always records the hold as set by an agent. A hold on a
 branch Tiden closed as abandoned opens that branch again. The tool never merges
 a branch.
 

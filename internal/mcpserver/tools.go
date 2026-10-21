@@ -433,8 +433,8 @@ const maxHoldDays = math.MaxInt64 / int64(24*time.Hour)
 type holdIntentArgs struct {
 	BranchID string `json:"branch_id"        jsonschema:"Intent branch UUID (required). Find it with list_branches."`
 	Reason   string `json:"reason,omitempty" jsonschema:"Why the branch is held, for example the next pull request that is planned. Required unless clear is true."`
-	For      string `json:"for,omitempty"    jsonschema:"How long the hold lasts, counted from now: a number of days such as 3d, or a duration such as 12h. Default 7d when neither for nor until is given. Do not combine with until."`
-	Until    string `json:"until,omitempty"  jsonschema:"When the hold ends, as an RFC 3339 timestamp such as 2026-11-01T09:00:00Z. Do not combine with for."`
+	For      string `json:"for,omitempty"    jsonschema:"How long the hold lasts, counted from now: a number of days such as 3d, or a duration such as 12h. Default 7d, which is also the longest an agent may hold. Do not combine with until."`
+	Until    string `json:"until,omitempty"  jsonschema:"When the hold ends, as an RFC 3339 timestamp such as 2026-11-01T09:00:00Z, at most 7 days from now. Do not combine with for."`
 	Clear    bool   `json:"clear,omitempty"  jsonschema:"Release the current hold instead of setting one. Then do not pass for or until."`
 }
 
@@ -444,7 +444,7 @@ func registerHoldIntent(srv *mcp.Server, client *api.Client) {
 		Description: "Hold or release the automatic merge of a Tiden intent branch. " +
 			"Tiden merges a finished intent branch by itself about 24 hours after its last linked pull request merges. " +
 			"Set a hold before handing back when more pull requests for the same intent are planned: a hold stops every automatic-merge timer until it ends, and the timers count again from the end of the hold. " +
-			"Pass reason and, optionally, either for (3d, 12h; default 7d) or until (an RFC 3339 timestamp). The server refuses a hold that ends in the past or later than it allows. " +
+			"Pass reason and, optionally, either for (3d, 12h; default 7d) or until (an RFC 3339 timestamp). A hold set through this tool lasts at most 7 days; the server refuses a hold that ends in the past or later than that. " +
 			"Pass clear=true to release the current hold. " +
 			"A branch that is already merged cannot be held; the server refuses it. " +
 			"Returns autoMerge: the state of the automatic merge after the change, including holdUntil, holdReason and heldByName. " +
