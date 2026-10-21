@@ -29,6 +29,7 @@ var allExpectedTools = []string{
 	"list_branches",
 	"create_branch",
 	"get_merge_preview",
+	"hold_intent",
 	"list_components",
 	"list_environments",
 	"list_releases",
@@ -389,6 +390,10 @@ func TestInputSchemaUnmarshal(t *testing.T) {
 			input: `{"branch_id": "branch-abc"}`,
 		},
 		{
+			tool:  "hold_intent",
+			input: `{"branch_id": "branch-abc", "for": "3d", "reason": "second PR is next"}`,
+		},
+		{
 			tool:  "gate_check",
 			input: `{"product_id": "prod-123", "branch": "intent/2026-08-05-x"}`,
 		},
@@ -495,6 +500,7 @@ func TestToolRequiredFields(t *testing.T) {
 		"list_branches":           {"product_id"},
 		"create_branch":           {"product_id", "name"},
 		"get_merge_preview":       {"branch_id"},
+		"hold_intent":             {"branch_id"},
 		"list_components":         {"product_id"},
 		"list_environments":       {"product_id"},
 		"list_releases":           {"product_id"},

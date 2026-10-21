@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `hold_intent` tool: holds or releases the automatic merge of an intent
+  branch. Pass `branch_id` and `reason`, with either `for` (`3d`, `12h`;
+  default `7d`) or `until` (an RFC 3339 timestamp), or pass `clear=true` to
+  release the current hold. The tool refuses a call without `reason` before it
+  sends a request, and shows the server's message when the server refuses the
+  hold, for example for a branch that is already merged or a hold longer than
+  7 days (the longest hold an agent may set; a person can hold an intent for up
+  to 30 days). It returns the
+  branch's `autoMerge` state. A hold on a branch Tiden closed as abandoned
+  opens that branch again. It needs a Tiden server that supports automatic
+  intent merge.
+
+### Changed
+
+- `list_branches` and `get_merge_preview` return `autoMerge`, where the
+  automatic merge of an intent branch stands: `state`, `reason`, `nextCheckAt`,
+  the latest hold (`holdUntil`, `holdReason`, `heldByName`, `holdSource`), and,
+  for a partly delivered intent, `openPromises` and `partialUntil`. A merged
+  branch also returns `mergeMode`, `mergedByName` and `continuesBranchId`. A
+  server without these fields returns the same output as before.
+
 ## [0.8.0] - 2026-10-20
 
 ### Changed

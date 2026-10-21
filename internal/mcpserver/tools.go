@@ -3,6 +3,10 @@ package mcpserver
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/qase-tms/tiden-mcp-server/internal/api"
@@ -26,6 +30,7 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerListBranches(srv, client)
 	registerCreateBranch(srv, client)
 	registerGetMergePreview(srv, client)
+	registerHoldIntent(srv, client)
 	registerListComponents(srv, client)
 	registerListEnvironments(srv, client)
 	registerListReleases(srv, client)
@@ -349,8 +354,10 @@ type listBranchesArgs struct {
 
 func registerListBranches(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "list_branches",
-		Description: "List all branches for a product, including their status (open, merged, closed) and metadata.",
+		Name: "list_branches",
+		Description: "List all branches for a product, including their status (open, merged, closed) and metadata. " +
+			"An intent branch also carries autoMerge, where Tiden's automatic merge of it stands (state, why it still waits, when it merges, any hold), " +
+			"and a merged branch carries mergeMode and mergedByName, which say how and by whom it was merged.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listBranchesArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -398,8 +405,9 @@ type getMergePreviewArgs struct {
 
 func registerGetMergePreview(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "get_merge_preview",
-		Description: "Read-only preview of what merging a branch into main would change. Returns additions, modifications, deletions, and any conflicts that need resolution.",
+		Name: "get_merge_preview",
+		Description: "Read-only preview of what merging a branch into main would change. Returns additions, modifications, deletions, and any conflicts that need resolution. " +
+			"For an intent branch it also returns autoMerge, the state of the automatic merge.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getMergePreviewArgs) (*mcp.CallToolResult, any, error) {
 		if args.BranchID == "" {
 			return toolError(errMissingField("branch_id"))
@@ -410,6 +418,109 @@ func registerGetMergePreview(srv *mcp.Server, client *api.Client) {
 		}
 		return toolResult(preview)
 	})
+}
+
+// -- hold_intent ---------------------------------------------------------------
+
+// defaultHold is how long a hold lasts when the caller gives neither until nor
+// for. The server owns the longest hold it accepts and refuses a longer one.
+const defaultHold = 7 * 24 * time.Hour
+
+// maxHoldDays keeps a days value small enough that converting it to a
+// time.Duration cannot overflow.
+const maxHoldDays = math.MaxInt64 / int64(24*time.Hour)
+
+type holdIntentArgs struct {
+	BranchID string `json:"branch_id"        jsonschema:"Intent branch UUID (required). Find it with list_branches."`
+	Reason   string `json:"reason,omitempty" jsonschema:"Why the branch is held, for example the next pull request that is planned. Required unless clear is true."`
+	For      string `json:"for,omitempty"    jsonschema:"How long the hold lasts, counted from now: a number of days such as 3d, or a duration such as 12h. Default 7d, which is also the longest an agent may hold. Do not combine with until."`
+	Until    string `json:"until,omitempty"  jsonschema:"When the hold ends, as an RFC 3339 timestamp such as 2026-11-01T09:00:00Z, at most 7 days from now. Do not combine with for."`
+	Clear    bool   `json:"clear,omitempty"  jsonschema:"Release the current hold instead of setting one. Then do not pass for or until."`
+}
+
+func registerHoldIntent(srv *mcp.Server, client *api.Client) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name: "hold_intent",
+		Description: "Hold or release the automatic merge of a Tiden intent branch. " +
+			"Tiden merges a finished intent branch by itself about 24 hours after its last linked pull request merges. " +
+			"Set a hold before handing back when more pull requests for the same intent are planned: a hold stops every automatic-merge timer until it ends, and the timers count again from the end of the hold. " +
+			"Pass reason and, optionally, either for (3d, 12h; default 7d) or until (an RFC 3339 timestamp). A hold set through this tool lasts at most 7 days; the server refuses a hold that ends in the past or later than that. " +
+			"Pass clear=true to release the current hold. " +
+			"A branch that is already merged cannot be held; the server refuses it. " +
+			"Returns autoMerge: the state of the automatic merge after the change, including holdUntil, holdReason and heldByName. " +
+			"A branch Tiden closed as abandoned opens again when it is held. This tool never merges a branch.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args holdIntentArgs) (*mcp.CallToolResult, any, error) {
+		if args.BranchID == "" {
+			return toolError(errMissingField("branch_id"))
+		}
+		body := api.SetIntentHoldRequest{Source: "agent"}
+		if args.Clear {
+			if args.For != "" || args.Until != "" {
+				return toolError(fmt.Errorf("clear releases the hold; do not pass for or until with it"))
+			}
+			body.Clear = true
+			body.Reason = strings.TrimSpace(args.Reason)
+		} else {
+			reason := strings.TrimSpace(args.Reason)
+			if reason == "" {
+				return toolError(errMissingField("reason"))
+			}
+			until, err := holdEnd(args.For, args.Until, time.Now())
+			if err != nil {
+				return toolError(err)
+			}
+			body.Reason = reason
+			body.Until = until.UTC().Format(time.RFC3339)
+		}
+		resp, err := client.SetIntentHold(ctx, args.BranchID, body)
+		if err != nil {
+			return toolError(err)
+		}
+		return toolResult(resp)
+	})
+}
+
+// holdEnd works out when a hold ends from the for and until inputs, counting
+// for from now. With neither input the hold lasts defaultHold.
+func holdEnd(forInput, untilInput string, now time.Time) (time.Time, error) {
+	forInput = strings.TrimSpace(forInput)
+	untilInput = strings.TrimSpace(untilInput)
+	switch {
+	case forInput != "" && untilInput != "":
+		return time.Time{}, fmt.Errorf("pass either for or until, not both")
+	case untilInput != "":
+		t, err := time.Parse(time.RFC3339, untilInput)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("until must be an RFC 3339 timestamp such as 2026-11-01T09:00:00Z: %w", err)
+		}
+		return t, nil
+	case forInput != "":
+		d, err := parseHoldDuration(forInput)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return now.Add(d), nil
+	default:
+		return now.Add(defaultHold), nil
+	}
+}
+
+// parseHoldDuration reads a whole number of days ("3d") or a Go duration
+// ("12h", "90m"). It accepts positive values only.
+func parseHoldDuration(s string) (time.Duration, error) {
+	invalid := fmt.Errorf("for must be a positive duration such as 3d or 12h, got %q", s)
+	if days, ok := strings.CutSuffix(s, "d"); ok {
+		n, err := strconv.ParseInt(days, 10, 64)
+		if err != nil || n <= 0 || n > maxHoldDays {
+			return 0, invalid
+		}
+		return time.Duration(n) * 24 * time.Hour, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil || d <= 0 {
+		return 0, invalid
+	}
+	return d, nil
 }
 
 // -- list_components -----------------------------------------------------------
