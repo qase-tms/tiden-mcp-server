@@ -171,8 +171,10 @@ linked pull request merges. `list_branches` and `get_merge_preview` return the
 branch's `autoMerge` object: `state` (`in_progress`, `countdown`, `closing`,
 `partial`, `merged`, `checkpoint_merged`, `abandoned` or `off`; a state a newer
 server adds is passed through as a string), `reason` and `reasonDetail` (why it
-still waits), `nextCheckAt` (it merges automatically after this time),
-`holdUntil`, `holdReason`, `heldByName` and `holdSource` (the latest hold),
+still waits), `nextCheckAt` (when Tiden next evaluates the branch: in state
+`countdown` this is the merge time; in other states it is, for example, the
+abandonment date, the next check of an open pull request, or now after a hold
+was released), `holdUntil`, `holdReason`, `heldByName` and `holdSource` (the latest hold),
 `openPromises` and `partialUntil` (a partly delivered intent), and
 `successorBranchId` and `successorBranchName` (after a checkpoint merge).
 `holdUntil` stays set after a hold has ended, so compare it with the current
@@ -183,8 +185,9 @@ Call `hold_intent` before handing back when more pull requests for the same
 intent are planned. A hold stops every automatic-merge timer until it ends; the
 timers then count again from that time. The server decides the longest hold it
 accepts and refuses a hold that ends in the past. A merged branch cannot be
-held. `hold_intent` always records the hold as set by an agent, and it neither
-merges nor reopens a branch.
+held. `hold_intent` always records the hold as set by an agent. A hold on a
+branch Tiden closed as abandoned opens that branch again. The tool never merges
+a branch.
 
 ### Planning context
 

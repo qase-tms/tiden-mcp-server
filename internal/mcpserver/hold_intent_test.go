@@ -255,14 +255,14 @@ func TestHoldIntentServerRefusalReachesTheAgent(t *testing.T) {
 		{
 			"hold invalid",
 			http.StatusBadRequest,
-			`{"code":3,"message":"INTENT_HOLD_INVALID: until is in the past","details":[]}`,
-			"INTENT_HOLD_INVALID: until is in the past",
+			`{"code":3,"message":"until is in the past","details":[]}`,
+			"until is in the past",
 		},
 		{
 			"branch not open",
 			http.StatusBadRequest,
-			`{"code":9,"message":"BRANCH_NOT_OPEN: branch is already merged","details":[]}`,
-			"BRANCH_NOT_OPEN: branch is already merged",
+			"{\"code\":9,\"message\":\"branch is merged — run `tiden intent reopen` to continue this intent in a new branch\",\"details\":[]}",
+			"branch is merged",
 		},
 		{
 			"branch not found",

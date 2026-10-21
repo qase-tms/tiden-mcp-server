@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   release the current hold. The tool refuses a call without `reason` before it
   sends a request, and shows the server's message when the server refuses the
   hold, for example for a branch that is already merged. It returns the
-  branch's `autoMerge` state. It needs a Tiden server that supports automatic
+  branch's `autoMerge` state. A hold on a branch Tiden closed as abandoned
+  opens that branch again. It needs a Tiden server that supports automatic
   intent merge.
 
 ### Changed

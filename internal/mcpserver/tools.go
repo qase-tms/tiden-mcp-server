@@ -446,7 +446,7 @@ func registerHoldIntent(srv *mcp.Server, client *api.Client) {
 			"Set a hold before handing back when more pull requests for the same intent are planned: a hold stops every automatic-merge timer until it ends, and the timers count again from the end of the hold. " +
 			"Pass reason and, optionally, either for (3d, 12h; default 7d) or until (an RFC 3339 timestamp). The server refuses a hold that ends in the past or later than it allows. " +
 			"Pass clear=true to release the current hold. " +
-			"A branch that is already merged cannot be held (BRANCH_NOT_OPEN). " +
+			"A branch that is already merged cannot be held; the server refuses it. " +
 			"Returns autoMerge: the state of the automatic merge after the change, including holdUntil, holdReason and heldByName. " +
 			"A branch Tiden closed as abandoned opens again when it is held. This tool never merges a branch.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args holdIntentArgs) (*mcp.CallToolResult, any, error) {

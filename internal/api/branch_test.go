@@ -228,12 +228,12 @@ func TestSetIntentHold_ClearBody(t *testing.T) {
 func TestSetIntentHold_ServerRefusalKeepsMessage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"code":3,"message":"INTENT_HOLD_INVALID: until is more than 30 days ahead","details":[]}`))
+		_, _ = w.Write([]byte(`{"code":3,"message":"until is more than 30 days ahead","details":[]}`))
 	}))
 	defer srv.Close()
 
 	_, err := New(srv.URL, "tok").SetIntentHold(context.Background(), "b1", SetIntentHoldRequest{Until: "2027-01-01T00:00:00Z", Reason: "r"})
-	if err == nil || !strings.Contains(err.Error(), "INTENT_HOLD_INVALID: until is more than 30 days ahead") {
+	if err == nil || !strings.Contains(err.Error(), "until is more than 30 days ahead") {
 		t.Fatalf("err = %v, want the server message", err)
 	}
 }

@@ -38,7 +38,9 @@ type AutoMerge struct {
 	// Reason is a machine-readable code for why the branch still waits.
 	Reason       string `json:"reason,omitempty"`
 	ReasonDetail string `json:"reasonDetail,omitempty"`
-	// NextCheckAt is the time the branch merges automatically after.
+	// NextCheckAt is when the server next evaluates the branch, in every state:
+	// the abandonment date, the next check of an open pull request, now after a
+	// hold was released. Only in state countdown is it the time of the merge.
 	NextCheckAt string `json:"nextCheckAt,omitempty"`
 	// HoldUntil is when the latest hold ends. It stays set after the hold has
 	// ended, so compare it with the current time.
