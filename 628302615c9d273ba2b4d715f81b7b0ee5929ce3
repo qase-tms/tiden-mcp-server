@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_a750868a3ea132::t_b846af0d11655e 10-11,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "628302615c9d273ba2b4d715f81b7b0ee5929ce3",
+  "prompts": {},
+  "sessions": {
+    "s_a750868a3ea132": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34e5e898-c82d-4a6d-a78c-a89584ce8389",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

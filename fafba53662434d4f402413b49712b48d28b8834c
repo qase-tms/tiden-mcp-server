@@ -1,0 +1,22 @@
+internal/repoconfig/repoconfig.go
+  s_f4b2e66bee9b7b::t_d4467839bd0af1 35-38
+  s_f4b2e66bee9b7b::t_4d2b495192f99a 39
+internal/repoconfig/repoconfig_test.go
+  s_f4b2e66bee9b7b::t_8b649e6e880f86 290-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fafba53662434d4f402413b49712b48d28b8834c",
+  "prompts": {},
+  "sessions": {
+    "s_f4b2e66bee9b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b21f83d5-1902-474f-b9fc-0bee8f666960",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}
