@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `merge_test_cases` folds one test case into another when both are the same
+  test, for example a renamed test that was reported as a new case. Pass
+  `product_id`, `ref` (the case to merge away) and `into_ref` (the survivor),
+  each a case number or UUID, and an optional `reason`. It returns `mergeId`,
+  `survivorSeq`, `mergedSeq` and `queued`. The merge skips the server's own
+  equivalence check; a refused merge is a tool error that shows the server's
+  reason.
+- `unmerge_test_cases` undoes a merge by `merge_id`. Only the newest merge in
+  the chain that touches either case can be undone; otherwise the error names
+  the newer merge to undo first. It returns `restoredSeq`,
+  `ambiguousAfterMerge` and `blocked`.
+- `list_test_merges` lists a product's test case merges, newest first, with an
+  optional `test_ref` to see only the merges that touch one case.
+- `get_test` returns a case's `repository`, `keys` (every key the case is known
+  by), `mergedIntoId` and `redirectedFrom`.
+
+### Changed
+
+- The `report_test_results` description tells agents that a result may carry
+  `identity` (language, repository, scope, name) next to its signature, and that
+  a test reported as a second case is folded back with `merge_test_cases`. The
+  tool passes the object to the server unchanged; an older server that does not
+  know the field rejects it.
+
 ## [0.9.0] - 2026-10-21
 
 ### Added

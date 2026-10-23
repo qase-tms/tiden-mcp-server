@@ -198,4 +198,23 @@ type Test struct {
 	LinkedRequirementCount int            `json:"linkedRequirementCount,omitempty"`
 	CreatedAt              string         `json:"createdAt,omitempty"`
 	UpdatedAt              string         `json:"updatedAt,omitempty"`
+
+	// Identity (proto common.proto Test 48-51). Repository is the case's
+	// normalized repository ("" = unknown). MergedIntoID is set while a merge
+	// of this case into a survivor is queued or done. RedirectedFrom is the id
+	// the caller asked for when this response is the survivor of a merge. Keys
+	// are every key the case is known by; the server sends them from GetTest
+	// only.
+	Repository     string            `json:"repository,omitempty"`
+	MergedIntoID   *string           `json:"mergedIntoId,omitempty"`
+	RedirectedFrom string            `json:"redirectedFrom,omitempty"`
+	Keys           []TestIdentityKey `json:"keys,omitempty"`
+}
+
+// TestIdentityKey mirrors api.v1.TestIdentityKeyView: one key a test case is
+// known by (scheme prefix "v2:", "v2n:", "ext:", "r1:", "s:", "h:", "sx:") and
+// when it was attached.
+type TestIdentityKey struct {
+	Key       string `json:"key"`
+	CreatedAt string `json:"createdAt,omitempty"`
 }
