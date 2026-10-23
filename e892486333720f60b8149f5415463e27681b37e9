@@ -1,0 +1,22 @@
+internal/mcpserver/list_products_test.go
+  s_f4b2e66bee9b7b::t_849032798398f1 21-24
+  s_f4b2e66bee9b7b::t_7a33ff8cff42af 68
+  s_f4b2e66bee9b7b::t_35e2a260babcaf 1-20,25-29,31-67,69-73
+  s_f4b2e66bee9b7b::t_3ba28c8540dd04 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e892486333720f60b8149f5415463e27681b37e9",
+  "prompts": {},
+  "sessions": {
+    "s_f4b2e66bee9b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b21f83d5-1902-474f-b9fc-0bee8f666960",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}
