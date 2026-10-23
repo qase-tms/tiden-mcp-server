@@ -150,15 +150,18 @@ func (c *Client) GetIssueFixContext(ctx context.Context, productID, issueID, bra
 
 type updateIssueStatusRequest struct {
 	Status string `json:"status"`
+	Reason string `json:"reason,omitempty"`
 }
 
 type updateIssueStatusResponse struct {
 	Issue model.Issue `json:"issue"`
 }
 
-func (c *Client) UpdateIssueStatus(ctx context.Context, id, status string) (*model.Issue, error) {
+// UpdateIssueStatus sets an issue's status. reason is optional and is left
+// out of the body when empty.
+func (c *Client) UpdateIssueStatus(ctx context.Context, id, status, reason string) (*model.Issue, error) {
 	var resp updateIssueStatusResponse
-	body := updateIssueStatusRequest{Status: status}
+	body := updateIssueStatusRequest{Status: status, Reason: reason}
 	if err := c.Do(ctx, "POST", pathf("/v1/issues/%s:setStatus", id), body, &resp); err != nil {
 		return nil, err
 	}
