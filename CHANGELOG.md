@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tool passes the object to the server unchanged; an older server that does not
   know the field rejects it.
 
+## [0.10.0] - 2026-10-23
+
+### Added
+
+- `set_issue_status` accepts an optional `reason` (max 1000 characters), for
+  example the fix PR or commit. The reason belongs to the new status: a status
+  change without a reason clears the previous one. Issues return it as
+  `statusReason`. It needs a Tiden server that stores the reason for an
+  issue's status.
+
 ## [0.9.0] - 2026-10-21
 
 ### Added
@@ -275,6 +285,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.10.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.5.0...v0.6.0
