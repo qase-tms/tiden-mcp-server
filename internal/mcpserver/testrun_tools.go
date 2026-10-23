@@ -148,13 +148,13 @@ func registerGetRunResults(srv *mcp.Server, client *api.Client) {
 type reportTestResultsArgs struct {
 	ProductID string           `json:"product_id" jsonschema:"Product ID (required)."`
 	RunSeq    int              `json:"run_seq"    jsonschema:"The run's per-product sequence number (required)."`
-	Results   []map[string]any `json:"results"    jsonschema:"Qase v2 ResultCreate-compatible objects (max 2000). Each needs title and execution.status (passed/failed/blocked/skipped/invalid). Strongly recommended: a stable UUID 'id' per entry so retries dedupe. Optional identity: external_id, signature, testops_ids (repository case seq_nums — every listed id must resolve or the batch is rejected). Mute via fields: {\"muted\": \"true\"}. Steps max 500 nodes / 5 levels."`
+	Results   []map[string]any `json:"results"    jsonschema:"Qase v2 ResultCreate-compatible objects (max 2000). Each needs title and execution.status (passed/failed/blocked/skipped/invalid). Strongly recommended: a stable UUID 'id' per entry so retries dedupe. Optional identity: external_id, signature, testops_ids (repository case seq_nums — every listed id must resolve or the batch is rejected), and identity — {language, repository, scope[], name[]}, the parts of the test's identity (language go|js|php|swift|python|jvm|ruby|dotnet, repository the git remote, scope the file/package dir/namespace, name the describe titles and test title) from which the server builds the case key; the signature stays a working alias. Send identity only to a server that supports it: an older server rejects the unknown field. Mute via fields: {\"muted\": \"true\"}. Steps max 500 nodes / 5 levels."`
 }
 
 func registerReportTestResults(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "report_test_results",
-		Description: "Submit a batch of test outcomes to a run (validate-then-write: either every entry is accepted or none are and per-entry errors are returned). Fails on a run that is already passed/failed/aborted. Max 2000 results per call.",
+		Description: "Submit a batch of test outcomes to a run (validate-then-write: either every entry is accepted or none are and per-entry errors are returned). Each entry may carry identity parts (language, repository, scope, name) next to its signature, so one test is one case; a test that was reported as a second case is folded back with merge_test_cases. Fails on a run that is already passed/failed/aborted. Max 2000 results per call.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args reportTestResultsArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))

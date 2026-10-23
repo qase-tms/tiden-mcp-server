@@ -115,7 +115,10 @@ claude mcp add tiden -- tiden-mcp-server
 | `create_spec` | Create a spec |
 | `update_spec` | Update a spec |
 | `list_tests` | One page of test suites and cases (default 100); continue with `page_token`, or explicitly traverse detail with `all=true`. `view=identity` is one read-only page of matching fields without bodies/steps/counts; incompatible with `all`. |
-| `get_test` | Fetch one test suite or case |
+| `get_test` | Fetch one test suite or case, with its identity: `repository`, `keys`, `mergedIntoId`, `redirectedFrom` |
+| `merge_test_cases` | Fold one test case into another (reversible): `product_id`, `ref`, `into_ref` (case number or UUID), optional `reason`; returns `mergeId`, `survivorSeq`, `mergedSeq`, `queued` |
+| `unmerge_test_cases` | Undo a merge (newest in its chain only; the error names the newer merge): `product_id`, `merge_id`; returns `restoredSeq`, `ambiguousAfterMerge`, `blocked` |
+| `list_test_merges` | List a product's test case merges, newest first; optional `test_ref` narrows to one case |
 | `list_branches` | Branches for a product. An intent branch carries `autoMerge` (where its automatic merge stands); a merged branch carries `mergeMode` and `mergedByName` |
 | `create_branch` | Create a branch off main |
 | `get_merge_preview` | Read-only preview of a branch merge, with the branch's `autoMerge` state |
@@ -135,7 +138,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_test_runs` | List test runs for a product (status/environment/branch/search filters, paginated) |
 | `get_test_run` | Fetch one run by per-product seq number, incl. stats + live-doc sync outcome |
 | `get_run_results` | Flat paginated attempts by default; `summary_view=overview`, `cases`, or `combos` for lean reads (case/combo pages 100, max 200; explicit continuation). `summary=true` without a view retains the full tree. |
-| `report_test_results` | Submit a batch of test outcomes to a run (all-or-nothing, max 2000) |
+| `report_test_results` | Submit a batch of test outcomes to a run (all-or-nothing, max 2000); a row may carry `identity` (language, repository, scope, name) next to its `signature` |
 | `complete_test_run` | Finalize a run: compute verdict, lock results, trigger live-doc sync |
 | `create_test_run` | Create a run (status `new`) to report results into |
 | `abort_test_run` | Abort a run (terminal; skips live-doc sync) |

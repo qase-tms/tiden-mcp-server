@@ -27,6 +27,7 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerUpdateRequirement(srv, client)
 	registerListTests(srv, client)
 	registerGetTest(srv, client)
+	registerTestMergeTools(srv, client)
 	registerListBranches(srv, client)
 	registerCreateBranch(srv, client)
 	registerGetMergePreview(srv, client)
@@ -333,7 +334,7 @@ type getTestArgs struct {
 func registerGetTest(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_test",
-		Description: "Fetch a single test suite or case by its UUID, including steps, status, priority, and linked specs.",
+		Description: "Fetch a single test suite or case by its UUID, including steps, status, priority, and linked specs. A case also shows its identity: repository, keys (every key the case is known by), mergedIntoId (set while a merge of this case into a survivor is queued or done) and redirectedFrom (the id you asked for, when the answer is the survivor of a merge).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTestArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return toolError(errMissingField("id"))
