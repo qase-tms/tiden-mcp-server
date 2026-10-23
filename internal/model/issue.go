@@ -18,6 +18,7 @@ type Issue struct {
 	ComponentID    *string `json:"componentId,omitempty"`
 	ResolvedAt     *string `json:"resolvedAt,omitempty"`
 	RegressedAt    *string `json:"regressedAt,omitempty"`
+	StatusReason   *string `json:"statusReason,omitempty"`
 }
 
 // Frame is one server-resolved stack frame. State is

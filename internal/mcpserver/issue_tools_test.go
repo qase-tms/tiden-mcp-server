@@ -2,8 +2,10 @@ package mcpserver_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"sync/atomic"
 	"testing"
 
@@ -56,5 +58,38 @@ func TestListIssuesRejectsRetiredLevelsArgument(t *testing.T) {
 	}
 	if got := hits.Load(); got != 1 {
 		t.Fatalf("list_issues with levels reached the API (%d requests total), want it rejected first", got)
+	}
+}
+
+// TestSetIssueStatusSendsReason: set_issue_status passes its optional reason
+// to tiden-app, and leaves the key out of the body when no reason is given.
+func TestSetIssueStatusSendsReason(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args map[string]any
+		want map[string]any
+	}{
+		{"with reason", map[string]any{"id": "i1", "status": "resolved", "reason": "fixed in #42"},
+			map[string]any{"status": "resolved", "reason": "fixed in #42"}},
+		{"without reason", map[string]any{"id": "i1", "status": "resolved"},
+			map[string]any{"status": "resolved"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got map[string]any
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/v1/issues/i1:setStatus" {
+					t.Errorf("path = %s", r.URL.Path)
+				}
+				_ = json.NewDecoder(r.Body).Decode(&got)
+				_, _ = w.Write([]byte(`{"issue":{"id":"i1","status":"resolved","timesSeen":"1"}}`))
+			}
+			_, isErr := callTool(t, handler, "set_issue_status", tc.args)
+			if isErr {
+				t.Fatalf("set_issue_status returned a tool error")
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("body = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

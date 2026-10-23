@@ -235,6 +235,7 @@ func registerListReleaseIssues(srv *mcp.Server, client *api.Client) {
 type setIssueStatusArgs struct {
 	ID     string `json:"id"     jsonschema:"Issue UUID (required)."`
 	Status string `json:"status" jsonschema:"New status (required): unresolved, resolved, or ignored."`
+	Reason string `json:"reason,omitempty" jsonschema:"Why the issue gets this status, e.g. the fix PR or commit (optional, max 1000 chars). It belongs to the new status: a status change without a reason clears the previous one."`
 }
 
 func registerSetIssueStatus(srv *mcp.Server, client *api.Client) {
@@ -248,7 +249,7 @@ func registerSetIssueStatus(srv *mcp.Server, client *api.Client) {
 		if args.Status == "" {
 			return toolError(errMissingField("status"))
 		}
-		iss, err := client.UpdateIssueStatus(ctx, args.ID, args.Status)
+		iss, err := client.UpdateIssueStatus(ctx, args.ID, args.Status, args.Reason)
 		if err != nil {
 			return toolError(err)
 		}

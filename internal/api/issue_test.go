@@ -164,7 +164,7 @@ func TestUpdateIssueStatus_PostsStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	iss, err := newTestClient(srv.URL).UpdateIssueStatus(context.Background(), "i1", "resolved")
+	iss, err := newTestClient(srv.URL).UpdateIssueStatus(context.Background(), "i1", "resolved", "")
 	if err != nil {
 		t.Fatalf("UpdateIssueStatus: %v", err)
 	}
