@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-26
+
 ### Added
 
 - `merge_test_cases` folds one test case into another when both are the same
@@ -285,6 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.11.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.7.0...v0.8.0
