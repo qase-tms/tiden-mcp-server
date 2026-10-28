@@ -79,6 +79,18 @@ type MergePreviewResponse struct {
 	// AutoMerge is the branch's automatic-merge state; nil from an older
 	// server.
 	AutoMerge *AutoMerge `json:"autoMerge,omitempty"`
+	// LinkProposals are the test-to-spec link proposals this merge turns into
+	// links (status proposed or accepted). Empty from an older server.
+	LinkProposals []LinkProposalBrief `json:"linkProposals,omitempty"`
+}
+
+// LinkProposalBrief is the compact form of a link proposal. The decoder drops
+// the proposal and test/spec UUIDs on purpose: an agent identifies a link by
+// the two sequence numbers.
+type LinkProposalBrief struct {
+	TestSeqNum        int    `json:"testSeqNum"`
+	RequirementSeqNum int    `json:"requirementSeqNum"`
+	Status            string `json:"status"`
 }
 
 type MergeStats struct {

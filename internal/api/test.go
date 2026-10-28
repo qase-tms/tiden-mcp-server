@@ -137,10 +137,34 @@ func (c *Client) UpdateTest(ctx context.Context, id string, body UpdateTestReque
 type LinkRequirementRequest struct {
 	RequirementID string `json:"requirementId"`
 	Branch        string `json:"branch,omitempty"`
+	// CreateBranch asks the server to create the branch when no branch of
+	// that name exists. Sent only when true.
+	CreateBranch bool `json:"createBranch,omitempty"`
 }
 
-func (c *Client) LinkRequirement(ctx context.Context, testID, requirementID, branch string) error {
-	body := LinkRequirementRequest{RequirementID: requirementID, Branch: branch}
+// LinkRequirementResponse is the server's answer to a link request. A server
+// that does not report the result answers with an empty object, so every field
+// can be zero.
+type LinkRequirementResponse struct {
+	// Branch is the branch the call resolved to ("main" on main).
+	Branch string `json:"branch,omitempty"`
+	// Link is set on main: the link that now exists.
+	Link *LinkBrief `json:"link,omitempty"`
+	// Proposal is set on a branch: the link proposal and its status.
+	Proposal *LinkProposalBrief `json:"proposal,omitempty"`
+}
+
+// LinkBrief is the link row of a link response. Only presence matters here.
+type LinkBrief struct {
+	ID string `json:"id,omitempty"`
+}
+
+func (c *Client) LinkRequirement(ctx context.Context, testID, requirementID, branch string, createBranch bool) (*LinkRequirementResponse, error) {
+	body := LinkRequirementRequest{RequirementID: requirementID, Branch: branch, CreateBranch: createBranch}
 	path := pathf("/v1/tests/%s/links", testID)
-	return c.Do(ctx, "POST", path, body, nil)
+	var resp LinkRequirementResponse
+	if err := c.Do(ctx, "POST", path, body, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
