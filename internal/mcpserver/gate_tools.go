@@ -22,6 +22,31 @@ func scopeFor(releaseID, branch string) string {
 	return "main"
 }
 
+// releaseGatePending is the answer for a release whose gate is waiting on its
+// build's test results. The server refuses the read with QG_CAPTURE_PENDING;
+// that is a state to report with its next move, not a tool failure.
+type releaseGatePending struct {
+	Status     string `json:"status"` // always "pending"
+	ReleaseID  string `json:"releaseId"`
+	Message    string `json:"message"`
+	NextAction string `json:"nextAction"`
+}
+
+// releaseGateError answers a pending release gate as a normal result; every
+// other error stays a tool error.
+func releaseGateError(err error, releaseID string) (*mcp.CallToolResult, any, error) {
+	if releaseID == "" || !api.IsCapturePending(err) {
+		return toolError(err)
+	}
+	return toolResult(releaseGatePending{
+		Status:    "pending",
+		ReleaseID: releaseID,
+		Message:   api.CapturePendingMessage(err),
+		NextAction: "Wait for the test runs of the release's build to finish: the gate is captured automatically once they settle. " +
+			"To capture it now from the results that exist, run `tiden release capture " + releaseID + "`.",
+	})
+}
+
 // -- gate_check ----------------------------------------------------------------
 
 type gateCheckArgs struct {
@@ -33,14 +58,14 @@ type gateCheckArgs struct {
 func registerGateCheck(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate_check",
-		Description: "Compute the Quality Gate verdict for a release, a branch, or current main if neither is given. Returns the verdict status (pass / blocked / not_verified / risk_accepted), the next action to take, the touched specs with their own next action, the accepted risks, the per-component breakdown, and fix hints. With branch, the verdict answers for what that branch touched: not_verified means work is unfinished (a linked test never ran, or a spec has no test) rather than broken, and the next action names the run to make or the cases to write. Use this as the 'verify' step, and act on the next action rather than on the status alone.",
+		Description: "Compute the Quality Gate verdict for a release, a branch, or current main if neither is given. Returns the verdict status (pass / blocked / not_verified / risk_accepted), the next action to take, the touched specs with their own next action, the accepted risks, the per-component breakdown, and fix hints. With branch, the verdict answers for what that branch touched: not_verified means work is unfinished (a linked test never ran, or a spec has no test) rather than broken, and the next action names the run to make or the cases to write. Use this as the 'verify' step, and act on the next action rather than on the status alone. For a release, the verdict is its current capture: releaseCapture says whether it was computed from the release's build SHA or copied from main, and recapturePending says a newer capture is still to come. While the release's build has no settled test results, the answer is status pending with the next action instead of a verdict.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args gateCheckArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
 		v, err := client.ComputeVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
 		if err != nil {
-			return toolError(err)
+			return releaseGateError(err, args.ReleaseID)
 		}
 		return toolResult(v)
 	})
@@ -57,14 +82,14 @@ type getVerdictArgs struct {
 func registerGetVerdict(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_verdict",
-		Description: "Read the latest Quality Gate verdict for a release, a branch, or current main without recomputing. Carries the same next action, touched specs and accepted risks as gate_check.",
+		Description: "Read the latest Quality Gate verdict for a release, a branch, or current main without recomputing. Carries the same next action, touched specs and accepted risks as gate_check. For a release, the verdict is its current capture: releaseCapture says whether it was computed from the release's build SHA or copied from main, and recapturePending says a newer capture is still to come. While the release's build has no settled test results, the answer is status pending with the next action instead of a verdict.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getVerdictArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
 		v, err := client.GetVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
 		if err != nil {
-			return toolError(err)
+			return releaseGateError(err, args.ReleaseID)
 		}
 		return toolResult(v)
 	})
@@ -110,7 +135,8 @@ func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 			"With neither feature_id nor component_id it returns a per-component rollup (view=rollup): per component its id, name and status, the number of specs per coverage state (verified / not_run / no_test), and the display reference (e.g. QA-12), id and coverage of each spec that is not verified (up to 50 per component, then notVerifiedMore with the remaining count). Use it to find coverage gaps, then scope down. " +
 			"With feature_id (a spec UUID; the spec and its descendants) or component_id (a component UUID) it returns one summary row per spec in that scope (view=summary): display, title, coverage and, when the server provides them, linked/passed/failed/stale test counts. " +
 			"include_tests=true returns the detail view (view=detail) for that scope with each linked test and its latest execution status; it requires feature_id or component_id because a whole product does not fit the output limit. " +
-			"If the server does not apply feature_id or component_id, the tool filters the rows itself and sets featureFilter or componentFilter to \"client\"; component status is then component-wide, not computed over the filtered rows only.",
+			"If the server does not apply feature_id or component_id, the tool filters the rows itself and sets featureFilter or componentFilter to \"client\"; component status is then component-wide, not computed over the filtered rows only. " +
+			"For a release whose build has no settled test results yet, the answer is status pending with the next action instead of rows.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getTraceabilityArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -140,7 +166,7 @@ func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 		}
 		r, err := client.GetTraceabilityView(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch, opts)
 		if err != nil {
-			return toolError(err)
+			return releaseGateError(err, args.ReleaseID)
 		}
 		out := traceabilityOutput{}
 		dropped := false

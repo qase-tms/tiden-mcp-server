@@ -577,7 +577,7 @@ type listReleasesArgs struct {
 func registerListReleases(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_releases",
-		Description: "List releases for a product across all environments.",
+		Description: "List every release of a product across all environments, newest first, each with its build SHA (buildSha) when one was announced.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args listReleasesArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))

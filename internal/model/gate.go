@@ -31,6 +31,30 @@ type Verdict struct {
 	// ScopeInfo says how the branch's touched scope was derived; absent from a
 	// server that still computes the whole product on a branch.
 	ScopeInfo *GateScopeInfo `json:"scopeInfo,omitempty"`
+	// --- release scope ---
+	// ReleaseCapture says which capture of the release this verdict is and
+	// where it came from; absent on other scopes and from an older server.
+	ReleaseCapture *ReleaseCapture `json:"releaseCapture,omitempty"`
+}
+
+// ReleaseCapture is the provenance of a release's current Quality Gate
+// capture. A release keeps every capture; the highest Seq is current.
+type ReleaseCapture struct {
+	Seq int `json:"seq,omitempty"`
+	// Source is "build_sha" (computed from BuildSHA's test results only) or
+	// "main" (a copy of the main verdict: the release had no build SHA).
+	Source string `json:"source,omitempty"`
+	// Trigger: create, ingest, announce, executions, manual, or legacy.
+	Trigger    string `json:"trigger,omitempty"`
+	BuildSHA   string `json:"buildSha,omitempty"`
+	CapturedAt string `json:"capturedAt,omitempty"`
+	CapturedBy string `json:"capturedBy,omitempty"`
+	// ReleaseBuildSHA is the release's build SHA now, which can differ from
+	// the one this capture was taken from.
+	ReleaseBuildSHA string `json:"releaseBuildSha,omitempty"`
+	// RecapturePending: the release names a build SHA this capture was not
+	// taken from, so a newer capture is still to come.
+	RecapturePending bool `json:"recapturePending,omitempty"`
 }
 
 // GateAcceptedRisk is one recorded risk acceptance carried on a verdict.
