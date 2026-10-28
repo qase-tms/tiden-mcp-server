@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A release verdict from `gate_check` or `get_verdict` carries
+  `releaseCapture`: which capture of the release it is (`seq`), whether it was
+  computed from the release's build SHA (`source: build_sha`) or copied from
+  main, what took it (`trigger`), who took it, and `recapturePending` when the
+  release now names a build that a newer capture is still waiting for.
+  `list_releases` returns each release's `buildSha`. Both are empty on a server
+  that predates build SHAs.
+
+### Changed
+
+- `gate_check`, `get_verdict` and `get_traceability` answer a release whose
+  build has no settled test results yet with `status: pending`, the server's
+  message naming the build, and a `nextAction` that points at
+  `tiden release capture <release_id>`, instead of a tool error.
+
+### Fixed
+
+- `list_releases` returns every release of the product. It sent `pageSize`,
+  which the server ignores, so it only ever returned the first 20; it now asks
+  for pages of 100 with `pagination.pageSize` and follows `nextPageToken`.
+
 ## [0.11.0] - 2026-10-26
 
 ### Added

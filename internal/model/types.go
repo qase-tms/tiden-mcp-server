@@ -70,6 +70,9 @@ type Release struct {
 	ReleasedAt      string `json:"releasedAt,omitempty"`
 	CreatedAt       string `json:"createdAt,omitempty"`
 	UpdatedAt       string `json:"updatedAt,omitempty"`
+	// BuildSHA is the commit the release was built from; empty when none was
+	// announced (or on a server that predates build SHAs).
+	BuildSHA string `json:"buildSha,omitempty"`
 }
 
 type Requirement struct {

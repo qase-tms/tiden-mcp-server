@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/qase-tms/tiden-mcp-server/internal/model"
 )
@@ -118,4 +121,32 @@ func gateQueryValues(scope, releaseID, branch string) url.Values {
 		q.Set("branch", branch)
 	}
 	return q
+}
+
+// capturePendingPrefix starts the server's refusal to read the gate of a
+// release that waits on its build's test results (FailedPrecondition, HTTP
+// 400, with the prefix kept on the wire).
+const capturePendingPrefix = "QG_CAPTURE_PENDING:"
+
+// IsCapturePending reports the server's refusal to read a release gate that is
+// still waiting on its build's test results: a normal state, not a failure.
+func IsCapturePending(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.HTTPStatus != http.StatusBadRequest {
+		return false
+	}
+	return strings.Contains(apiErr.Message, capturePendingPrefix) || strings.Contains(apiErr.Raw, capturePendingPrefix)
+}
+
+// CapturePendingMessage is the server's pending message without its prefix.
+func CapturePendingMessage(err error) string {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		return err.Error()
+	}
+	msg := apiErr.Message
+	if i := strings.Index(msg, capturePendingPrefix); i >= 0 {
+		msg = msg[i+len(capturePendingPrefix):]
+	}
+	return strings.TrimSpace(msg)
 }
