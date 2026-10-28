@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_183d5442023bc1::t_ef262d1de6d0c4 10-11,315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3743a9295d093d838e9d51723af62fe90d60944f",
+  "prompts": {},
+  "sessions": {
+    "s_183d5442023bc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85835d40-186d-470b-9432-9282dbd1bb18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "prostoandrei <avaganov@qase.io>"
+    }
+  }
+}
