@@ -408,7 +408,8 @@ func registerGetMergePreview(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "get_merge_preview",
 		Description: "Read-only preview of what merging a branch into main would change. Returns additions, modifications, deletions, and any conflicts that need resolution. " +
-			"For an intent branch it also returns autoMerge, the state of the automatic merge.",
+			"For an intent branch it also returns autoMerge, the state of the automatic merge. " +
+			"linkProposals lists the test-to-spec link proposals the merge turns into links (testSeqNum, requirementSeqNum, status: proposed or accepted); it is absent when there are none.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getMergePreviewArgs) (*mcp.CallToolResult, any, error) {
 		if args.BranchID == "" {
 			return toolError(errMissingField("branch_id"))

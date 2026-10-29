@@ -305,15 +305,18 @@ func registerUpdateTest(srv *mcp.Server, client *api.Client) {
 // -- link_spec -----------------------------------------------------------------
 
 type linkRequirementArgs struct {
-	TestID        string `json:"test_id"          jsonschema:"Test (case) UUID (required)."`
-	RequirementID string `json:"spec_id"          jsonschema:"Spec UUID to link (required)."`
-	Branch        string `json:"branch,omitempty" jsonschema:"Branch name (optional - links are managed on main in v1)."`
+	TestID        string `json:"test_id"                 jsonschema:"Test (case) UUID (required)."`
+	RequirementID string `json:"spec_id"                 jsonschema:"Spec UUID to link (required)."`
+	Branch        string `json:"branch,omitempty"        jsonschema:"Branch name (optional - defaults to main). On a branch the call stages a link proposal that a merge turns into a link. An unknown branch is an error unless create_branch is true."`
+	CreateBranch  bool   `json:"create_branch,omitempty" jsonschema:"Create the branch when no branch of that name exists (optional - default false)."`
 }
 
 func registerLinkRequirement(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "link_spec",
-		Description: "Link a test case to a spec, so the spec counts as covered by that test in the traceability matrix and the gate.",
+		Name: "link_spec",
+		Description: "Link a test case to a spec, so the spec counts as covered by that test in the traceability matrix and the gate. " +
+			"Returns status, branch, testId and requirementId. On main status is linked. On a branch the link is staged as a proposal and status is the proposal's status (proposed, accepted or rejected; a rejected proposal stays rejected). " +
+			"A test that is not in the branch's view, or an unknown branch, is an error.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args linkRequirementArgs) (*mcp.CallToolResult, any, error) {
 		if args.TestID == "" {
 			return toolError(errMissingField("test_id"))
@@ -321,9 +324,17 @@ func registerLinkRequirement(srv *mcp.Server, client *api.Client) {
 		if args.RequirementID == "" {
 			return toolError(errMissingField("spec_id"))
 		}
-		if err := client.LinkRequirement(ctx, args.TestID, args.RequirementID, args.Branch); err != nil {
+		resp, err := client.LinkRequirement(ctx, args.TestID, args.RequirementID, args.Branch, args.CreateBranch)
+		if err != nil {
 			return toolError(err)
 		}
-		return toolResult(map[string]string{"status": "linked", "testId": args.TestID, "requirementId": args.RequirementID})
+		out := map[string]string{"status": "linked", "testId": args.TestID, "requirementId": args.RequirementID}
+		if resp.Branch != "" {
+			out["branch"] = resp.Branch
+		}
+		if resp.Proposal != nil && resp.Proposal.Status != "" {
+			out["status"] = resp.Proposal.Status
+		}
+		return toolResult(out)
 	})
 }

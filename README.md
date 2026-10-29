@@ -121,7 +121,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `list_test_merges` | List a product's test case merges, newest first; optional `test_ref` narrows to one case |
 | `list_branches` | Branches for a product. An intent branch carries `autoMerge` (where its automatic merge stands); a merged branch carries `mergeMode` and `mergedByName` |
 | `create_branch` | Create a branch off main |
-| `get_merge_preview` | Read-only preview of a branch merge, with the branch's `autoMerge` state |
+| `get_merge_preview` | Read-only preview of a branch merge, with the branch's `autoMerge` state and `linkProposals` (the test-to-spec links the merge adds: `testSeqNum`, `requirementSeqNum`, `status`) |
 | `hold_intent` | Hold or release the automatic merge of an intent branch: `branch_id`, `reason`, and `for` (`3d`, `12h`; default `7d`) or `until` (RFC 3339), or `clear=true` to release. A hold an agent sets lasts at most 7 days. Returns the `autoMerge` state |
 | `list_components` | Components for a product |
 | `list_environments` | Deployment environments for a product |
@@ -134,7 +134,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `record_risk_acceptances` | Record one intent session's risk acceptances and test deferrals (does not close the session; that stays CLI-only) |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |
-| `link_spec` | Link a test case to a spec |
+| `link_spec` | Link a test case to a spec: `test_id`, `spec_id`, optional `branch` and `create_branch`. Returns `status`, `branch`, `testId`, `requirementId`; on a branch the link is staged as a proposal (`proposed`, `accepted` or `rejected`) that a merge turns into a link, and an unknown branch is an error unless `create_branch` is true |
 | `list_test_runs` | List test runs for a product (status/environment/branch/search filters, paginated) |
 | `get_test_run` | Fetch one run by per-product seq number, incl. stats + live-doc sync outcome |
 | `get_run_results` | Flat paginated attempts by default; `summary_view=overview`, `cases`, or `combos` for lean reads (case/combo pages 100, max 200; explicit continuation). `summary=true` without a view retains the full tree. |

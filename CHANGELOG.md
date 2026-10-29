@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `link_spec` takes `create_branch`. Without it, a `branch` name that matches
+  no branch is an error; with it, the server creates the branch.
+- `get_merge_preview` returns `linkProposals`: the test-to-spec link proposals
+  the merge turns into links, each with `testSeqNum`, `requirementSeqNum` and
+  `status` (`proposed` or `accepted`). The key is absent when there are none
+  and on a server that predates it.
+
+### Changed
+
+- `link_spec` returns what the server did: `status` is `linked` on main and the
+  proposal's status (`proposed`, `accepted` or `rejected`) on a branch, next to
+  `branch`, `testId` and `requirementId`. A test outside the branch's view is a
+  tool error that shows the server's text. An older server that answers with an
+  empty object still gets `status: linked` without `branch`.
+
 ## [0.12.0] - 2026-10-28
 
 ### Added
