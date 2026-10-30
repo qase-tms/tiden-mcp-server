@@ -1,0 +1,27 @@
+internal/mcpserver/acceptance_tools.go
+  s_a1ec22d1784cd7::t_77e542bcba422d 22
+  s_a1ec22d1784cd7::t_2bfbb9b14144c5 34,38
+internal/api/acceptance.go
+  s_a1ec22d1784cd7::t_0d394e14f584d2 23-29
+internal/mcpserver/server_test.go
+  s_a1ec22d1784cd7::t_8dbfb5e0adb1ca 155-196
+  s_a1ec22d1784cd7::t_cd348c829d0645 342
+internal/api/acceptance_test.go
+  s_a1ec22d1784cd7::t_7cc7857da259d8 83-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "5f56e3cb5ff4db7f2ba8e41a9dfab6175623cfcc",
+  "prompts": {},
+  "sessions": {
+    "s_a1ec22d1784cd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2db362b1-5918-43fc-af72-a72eda9c210e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
