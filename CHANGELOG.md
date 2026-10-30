@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A parent spec with no test links of its own reads its coverage from its child
+  specs. `gate_check` and `get_verdict` rows (`requirements` of a subject),
+  `get_traceability` rows (in the rollup, summary and detail views) and
+  `lookup_context` items pass on what the server sends: `viaChildren`,
+  `childSpecs` and `childSpecsCovered` on a spec row, `child_specs` as its
+  `coverageExemption` when its child specs are graded in the same answer, and
+  `viaChildrenIds` on a `lookup_context` item. The keys are absent on a server
+  that does not send them.
+
 ## [0.13.0] - 2026-10-30
 
 ### Added

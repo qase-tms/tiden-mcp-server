@@ -43,6 +43,8 @@ func summaryFromMatrix(m model.TraceabilityMatrix) model.TraceabilitySummary {
 			sc.Requirements = append(sc.Requirements, model.SummaryRequirement{
 				RequirementID: r.RequirementID, Display: r.Display, Title: r.Title,
 				ParentID: r.ParentID, BranchStatus: r.BranchStatus, Coverage: r.Coverage,
+				CoverageExemption: r.CoverageExemption, ViaChildren: r.ViaChildren,
+				ChildSpecs: r.ChildSpecs, ChildSpecsCovered: r.ChildSpecsCovered,
 			})
 		}
 		out.Components = append(out.Components, sc)
@@ -182,6 +184,10 @@ type rollupSpec struct {
 	Display       string `json:"display"`
 	RequirementID string `json:"requirementId"`
 	Coverage      string `json:"coverage"`
+	// The parent-spec mark, copied from the summary row; absent otherwise.
+	ViaChildren       bool `json:"viaChildren,omitempty"`
+	ChildSpecs        int  `json:"childSpecs,omitempty"`
+	ChildSpecsCovered int  `json:"childSpecsCovered,omitempty"`
 }
 
 type rollupComponent struct {
@@ -208,7 +214,10 @@ func rollup(s model.TraceabilitySummary) []rollupComponent {
 				continue
 			}
 			if len(rc.NotVerified) < maxNotVerifiedPerComponent {
-				rc.NotVerified = append(rc.NotVerified, rollupSpec{Display: r.Display, RequirementID: r.RequirementID, Coverage: r.Coverage})
+				rc.NotVerified = append(rc.NotVerified, rollupSpec{
+					Display: r.Display, RequirementID: r.RequirementID, Coverage: r.Coverage,
+					ViaChildren: r.ViaChildren, ChildSpecs: r.ChildSpecs, ChildSpecsCovered: r.ChildSpecsCovered,
+				})
 			} else {
 				rc.NotVerifiedMore++
 			}
