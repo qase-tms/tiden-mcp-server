@@ -1,6 +1,6 @@
 module github.com/qase-tms/tiden-mcp-server
 
-go 1.26.1
+go 1.27.0
 
 require github.com/modelcontextprotocol/go-sdk v1.6.1
 
