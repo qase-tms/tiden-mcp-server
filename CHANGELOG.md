@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-30
+
 ### Added
 
 - `link_spec` takes `create_branch`. Without it, a `branch` name that matches
@@ -23,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `branch`, `testId` and `requirementId`. A test outside the branch's view is a
   tool error that shows the server's text. An older server that answers with an
   empty object still gets `status: linked` without `branch`.
+- The server builds with Go 1.27. `go install` needs Go 1.27 or later; the
+  `go` command downloads that toolchain itself unless `GOTOOLCHAIN=local`.
 
 ## [0.12.0] - 2026-10-28
 
@@ -329,6 +333,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.13.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.9.0...v0.10.0
