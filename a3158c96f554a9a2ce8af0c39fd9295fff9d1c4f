@@ -1,0 +1,24 @@
+.github/workflows/ci.yml
+  s_f8ce8d23b0b17b::t_68aa2d028bd461 20
+  s_f8ce8d23b0b17b::t_fb1d2a19884087 34
+go.mod
+  s_f8ce8d23b0b17b::t_68aa2d028bd461 3
+.github/workflows/release.yml
+  s_f8ce8d23b0b17b::t_68aa2d028bd461 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3158c96f554a9a2ce8af0c39fd9295fff9d1c4f",
+  "prompts": {},
+  "sessions": {
+    "s_f8ce8d23b0b17b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cb1c85b-91b4-4c45-8cf9-65ff31d2760d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}

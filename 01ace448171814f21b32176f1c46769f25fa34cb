@@ -1,0 +1,30 @@
+internal/resolve/resolve_test.go
+  s_f4b2e66bee9b7b::t_2f68dfb44622f5 475-535
+cmd/tiden-mcp-server/main_test.go
+  s_f4b2e66bee9b7b::t_4e9ee4374c0f47 123-170
+cmd/tiden-mcp-server/main.go
+  s_f4b2e66bee9b7b::t_19e1cdb853ee4e 157-168
+internal/resolve/resolve.go
+  s_f4b2e66bee9b7b::t_9d55c933b4e67f 80-84
+  s_f4b2e66bee9b7b::t_25695fb1a44d27 318-330
+  s_f4b2e66bee9b7b::t_610e7e92c4ad3a 375,378,384,387-390
+internal/mcpserver/list_products_test.go
+  s_f4b2e66bee9b7b::t_f4dd7e5d8e1d46 75-113
+  s_f4b2e66bee9b7b::t_a8af16f34f291e 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "01ace448171814f21b32176f1c46769f25fa34cb",
+  "prompts": {},
+  "sessions": {
+    "s_f4b2e66bee9b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b21f83d5-1902-474f-b9fc-0bee8f666960",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}
