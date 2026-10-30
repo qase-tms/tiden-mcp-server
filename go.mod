@@ -12,3 +12,8 @@ require (
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 )
+
+godebug (
+	tracebacklabels=0
+	x509sslcertoverrideplatform=0
+)
