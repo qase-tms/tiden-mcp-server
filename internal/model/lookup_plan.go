@@ -44,11 +44,14 @@ type LookupItemResult struct {
 	Matches                 []LookupMatch `json:"matches"`
 	CandidateRequirementIDs []string      `json:"candidateRequirementIds"`
 	CoverageGapIDs          []string      `json:"coverageGapIds"`
-	Truncated               bool          `json:"truncated"`
-	Omitted                 int           `json:"omitted"`
-	LimitReached            bool          `json:"limitReached"`
-	Diagnostics             []string      `json:"diagnostics"`
-	Error                   string        `json:"error,omitempty"`
+	// ViaChildrenIDs lists the ids in the covered or gap lists whose
+	// classification comes from child specs. Absent on a server that predates it.
+	ViaChildrenIDs []string `json:"viaChildrenIds,omitempty"`
+	Truncated      bool     `json:"truncated"`
+	Omitted        int      `json:"omitted"`
+	LimitReached   bool     `json:"limitReached"`
+	Diagnostics    []string `json:"diagnostics"`
+	Error          string   `json:"error,omitempty"`
 }
 
 type LookupBatchResult struct {

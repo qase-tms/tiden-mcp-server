@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -79,5 +80,57 @@ func TestLookupContextStructuredPartialAndReadOnlySchema(t *testing.T) {
 	}
 	if fromText.Items[0].ID != decoded.Items[0].ID {
 		t.Fatal("text and structured content disagree")
+	}
+}
+
+// viaChildrenIds passes through lookup_context unchanged, and is absent when
+// the server sends none.
+func TestLookupContextCarriesViaChildrenIDs(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		via  []string
+	}{{"with", []string{"gap-1"}}, {"without", nil}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				out := model.LookupBatchResult{
+					Version: 1, ProductID: "product", BranchID: "main", RetrievalStatus: "complete", ReadAt: "2026-09-07T00:00:00Z",
+					Requirements: []model.LookupRequirement{{ID: "gap-1", CanonicalID: "gap-1", Title: "Parent"}},
+					Items: []model.LookupItemResult{{
+						ID: "P1", Question: "q", Status: "ok", CandidateRequirementIDs: []string{"gap-1"}, CoverageGapIDs: []string{"gap-1"},
+						ViaChildrenIDs: tc.via, Matches: []model.LookupMatch{{RequirementID: "gap-1", FeatureID: "gap-1", Roles: []string{"seed"}}}, Diagnostics: []string{},
+					}},
+				}
+				_ = json.NewEncoder(w).Encode(out)
+			}))
+			defer backend.Close()
+			srv := mcpserver.New(api.New(backend.URL, "token"), "")
+			st, ct := mcp.NewInMemoryTransports()
+			go func() { _ = srv.Run(ctx, st) }()
+			session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, nil).Connect(ctx, ct, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = session.Close() }()
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "lookup_context", Arguments: map[string]any{"product_id": "product", "items": []map[string]any{{"id": "P1", "question": "q"}}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.IsError {
+				t.Fatalf("tool error: %+v", result.Content)
+			}
+			raw, _ := json.Marshal(result.StructuredContent)
+			var decoded model.LookupBatchResult
+			if err := json.Unmarshal(raw, &decoded); err != nil {
+				t.Fatal(err)
+			}
+			got := decoded.Items[0].ViaChildrenIDs
+			if len(got) != len(tc.via) {
+				t.Fatalf("viaChildrenIds = %v, want %v (%s)", got, tc.via, raw)
+			}
+			if tc.via == nil && strings.Contains(string(raw), "viaChildrenIds") {
+				t.Fatalf("absent field appeared: %s", raw)
+			}
+		})
 	}
 }

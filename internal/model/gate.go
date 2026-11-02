@@ -125,6 +125,17 @@ type GateRequirementFact struct {
 	// UncoveredOnMain: this requirement was already uncovered before the
 	// branch existed, so its gap is not this session's to close.
 	UncoveredOnMain bool `json:"uncoveredOnMain,omitempty"`
+	// CoverageExemption is "child_specs" when the row is a parent that is not a
+	// gap of its own because its child specs are graded in the same evaluation.
+	CoverageExemption string `json:"coverageExemption,omitempty"`
+	// ViaChildren, ChildSpecs and ChildSpecsCovered mark a parent spec with no
+	// test links of its own whose coverage comes from its child specs:
+	// ChildSpecs counts the child specs it was read from, ChildSpecsCovered how
+	// many of those are in the good state. Absent on every other row and on a
+	// server that predates them.
+	ViaChildren       bool `json:"viaChildren,omitempty"`
+	ChildSpecs        int  `json:"childSpecs,omitempty"`
+	ChildSpecsCovered int  `json:"childSpecsCovered,omitempty"`
 }
 
 // GateSubjectResult is the per-subject breakdown of a verdict - the
@@ -217,6 +228,17 @@ type SummaryRequirement struct {
 	Passed        *int   `json:"passed,omitempty"`
 	Failed        *int   `json:"failed,omitempty"`
 	Stale         *int   `json:"stale,omitempty"`
+	// CoverageExemption is "child_specs" when the row is a parent that is not a
+	// gap of its own because its child specs are graded in the same evaluation.
+	CoverageExemption string `json:"coverageExemption,omitempty"`
+	// ViaChildren, ChildSpecs and ChildSpecsCovered mark a parent spec with no
+	// test links of its own whose coverage comes from its child specs:
+	// ChildSpecs counts the child specs it was read from, ChildSpecsCovered how
+	// many of those are in the good state. Absent on every other row and on a
+	// server that predates them.
+	ViaChildren       bool `json:"viaChildren,omitempty"`
+	ChildSpecs        int  `json:"childSpecs,omitempty"`
+	ChildSpecsCovered int  `json:"childSpecsCovered,omitempty"`
 }
 
 type MatrixComponent struct {
@@ -237,6 +259,17 @@ type MatrixRequirement struct {
 	BranchStatus  string       `json:"branchStatus,omitempty"` // "added" | "modified" | "unchanged" (branch scope only)
 	Coverage      string       `json:"coverage"`               // "verified" | "not_run" | "no_test"
 	Cells         []MatrixCell `json:"cells"`
+	// CoverageExemption is "child_specs" when the row is a parent that is not a
+	// gap of its own because its child specs are graded in the same evaluation.
+	CoverageExemption string `json:"coverageExemption,omitempty"`
+	// ViaChildren, ChildSpecs and ChildSpecsCovered mark a parent spec with no
+	// test links of its own whose coverage comes from its child specs:
+	// ChildSpecs counts the child specs it was read from, ChildSpecsCovered how
+	// many of those are in the good state. Absent on every other row and on a
+	// server that predates them.
+	ViaChildren       bool `json:"viaChildren,omitempty"`
+	ChildSpecs        int  `json:"childSpecs,omitempty"`
+	ChildSpecsCovered int  `json:"childSpecsCovered,omitempty"`
 }
 
 type MatrixCell struct {
