@@ -1,0 +1,37 @@
+README.md
+  s_183d5442023bc1::t_6e83627da53af3 128-130,132
+internal/mcpserver/gate_tools.go
+  s_183d5442023bc1::t_58eaf9ff3d9221 25-49,61,68,85,92,138-139,169
+internal/api/gate.go
+  s_183d5442023bc1::t_20c4f217e2ad0b 5-6,8,125-152
+internal/model/types.go
+  s_183d5442023bc1::t_7013944f96680a 73-75
+internal/mcpserver/tools.go
+  s_183d5442023bc1::t_58eaf9ff3d9221 580
+internal/model/gate.go
+  s_183d5442023bc1::t_747fafbefeb0e6 34-57
+internal/api/release.go
+  s_183d5442023bc1::t_f098c6600cdc4a 5,15-21,23-42,44-45
+internal/mcpserver/release_gate_test.go
+  s_183d5442023bc1::t_89df36a9c98552 1-168
+CHANGELOG.md
+  s_183d5442023bc1::t_6e83627da53af3 10-32
+internal/api/release_test.go
+  s_183d5442023bc1::t_89df36a9c98552 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba8937ef2dc2ec3919680aae2124f0070ef32d11",
+  "prompts": {},
+  "sessions": {
+    "s_183d5442023bc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85835d40-186d-470b-9432-9282dbd1bb18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "prostoandrei <avaganov@qase.io>"
+    }
+  }
+}
