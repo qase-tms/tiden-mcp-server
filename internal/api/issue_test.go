@@ -114,7 +114,7 @@ func TestGetIssueFixContext_QueryAndUnwrap(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	fc, err := newTestClient(srv.URL).GetIssueFixContext(context.Background(), "p1", "i1", "feature/x", 25)
+	fc, err := newTestClient(srv.URL).GetIssueFixContext(context.Background(), "p1", "i1", "feature/x", 25, 0, "")
 	if err != nil {
 		t.Fatalf("GetIssueFixContext: %v", err)
 	}
@@ -145,11 +145,49 @@ func TestGetIssueFixContext_OmitsEmptyQuery(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := newTestClient(srv.URL).GetIssueFixContext(context.Background(), "p1", "i1", "", 0); err != nil {
+	if _, err := newTestClient(srv.URL).GetIssueFixContext(context.Background(), "p1", "i1", "", 0, 0, ""); err != nil {
 		t.Fatalf("GetIssueFixContext: %v", err)
 	}
 	if gotRawQuery != "" {
 		t.Errorf("raw query = %q, want empty", gotRawQuery)
+	}
+}
+
+func TestGetIssueFixContext_PagingQueryAndPagination(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`{"context":{"suspectRequirements":[{"id":"r1"}]},"pagination":{"nextPageToken":"n2","totalCount":45}}`))
+	}))
+	defer srv.Close()
+
+	fc, err := newTestClient(srv.URL).GetIssueFixContext(context.Background(), "p1", "i1", "", 0, 20, "n1")
+	if err != nil {
+		t.Fatalf("GetIssueFixContext: %v", err)
+	}
+	if got := gotQuery.Get("pagination.pageSize"); got != "20" {
+		t.Errorf("pagination.pageSize = %q", got)
+	}
+	if got := gotQuery.Get("pagination.pageToken"); got != "n1" {
+		t.Errorf("pagination.pageToken = %q", got)
+	}
+	if fc.Pagination == nil || fc.Pagination.NextPageToken != "n2" || fc.Pagination.TotalCount != 45 {
+		t.Errorf("pagination = %+v", fc.Pagination)
+	}
+}
+
+func TestGetIssueFixContext_NoPaginationFromOldServer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"context":{"suspectPaths":["a.go"]}}`))
+	}))
+	defer srv.Close()
+
+	fc, err := newTestClient(srv.URL).GetIssueFixContext(context.Background(), "p1", "i1", "", 0, 0, "")
+	if err != nil {
+		t.Fatalf("GetIssueFixContext: %v", err)
+	}
+	if fc.Pagination != nil || len(fc.SuspectPaths) != 1 {
+		t.Errorf("fc = %+v, want paths and nil pagination", fc)
 	}
 }
 

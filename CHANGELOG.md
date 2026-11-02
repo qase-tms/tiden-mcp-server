@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `coverageExemption` when its child specs are graded in the same answer, and
   `viaChildrenIds` on a `lookup_context` item. The keys are absent on a server
   that does not send them.
+- `get_issue_fix_context` takes `page_token` and `page_size` (default 20, max
+  50) and returns `pagination` (`nextPageToken`, `totalCount`) next to the
+  suspect specs. The server orders suspect specs by file, crash-site file
+  first. A later page returns only `suspectRequirements` and
+  `truncationSignals`. The key is absent on a server that does not page.
 
 ## [0.13.0] - 2026-10-30
 

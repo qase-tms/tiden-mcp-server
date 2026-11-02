@@ -181,12 +181,14 @@ type getIssueFixContextArgs struct {
 	IssueID   string `json:"issue_id"             jsonschema:"Issue UUID (required)."`
 	Branch    string `json:"branch,omitempty"     jsonschema:"Branch for spec lookup. Omit for main."`
 	MaxFrames int    `json:"max_frames,omitempty" jsonschema:"In-app stack frames to include (default 10, max 50)."`
+	PageToken string `json:"page_token,omitempty" jsonschema:"Opaque cursor from a previous page's pagination.nextPageToken."`
+	PageSize  int    `json:"page_size,omitempty"  jsonschema:"Specs per page (default 20, max 50)."`
 }
 
 func registerGetIssueFixContext(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_issue_fix_context",
-		Description: "Everything needed to fix one error, in one call: the issue, its symbolicated stack frames, the repo files those frames implicate (suspectPaths — open these first), where it is happening by environment, and — for each spec those files implement — whether a test already covers it. This replaces combining get_issue, get_issue_event_stats and spec lookups: one round-trip, and it reports which suspect path matched which spec so a wrong match is visible. Start every fix here.",
+		Description: "Everything needed to fix one error, in one call: the issue, its symbolicated stack frames, the repo files those frames implicate (suspectPaths — open these first), where it is happening by environment, and — for each spec those files implement — whether a test already covers it. This replaces combining get_issue, get_issue_event_stats and spec lookups: one round-trip, and it reports which suspect path matched which spec so a wrong match is visible. Start every fix here. Suspect specs are ordered by file, crash-site file first, 20 per page; request the next page only when the needed spec is not on the pages already read.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getIssueFixContextArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -194,7 +196,7 @@ func registerGetIssueFixContext(srv *mcp.Server, client *api.Client) {
 		if args.IssueID == "" {
 			return toolError(errMissingField("issue_id"))
 		}
-		fc, err := client.GetIssueFixContext(ctx, args.ProductID, args.IssueID, args.Branch, args.MaxFrames)
+		fc, err := client.GetIssueFixContext(ctx, args.ProductID, args.IssueID, args.Branch, args.MaxFrames, args.PageSize, args.PageToken)
 		if err != nil {
 			return toolError(err)
 		}

@@ -125,17 +125,27 @@ func (c *Client) GetIssueEventStats(ctx context.Context, id string) (*model.Issu
 }
 
 type getIssueFixContextResponse struct {
-	Context model.IssueFixContext `json:"context"`
+	Context    model.IssueFixContext `json:"context"`
+	Pagination *model.Pagination     `json:"pagination,omitempty"`
 }
 
-// GetIssueFixContext returns the composed triage pack for one issue.
-func (c *Client) GetIssueFixContext(ctx context.Context, productID, issueID, branch string, maxFrames int) (*model.IssueFixContext, error) {
+// GetIssueFixContext returns the composed triage pack for one issue. pageSize
+// and pageToken page its suspect specs; both are left out of the query when
+// unset. The returned pack carries the response's pagination (nil when the
+// server does not page).
+func (c *Client) GetIssueFixContext(ctx context.Context, productID, issueID, branch string, maxFrames, pageSize int, pageToken string) (*model.IssueFixContext, error) {
 	q := url.Values{}
 	if branch != "" {
 		q.Set("branch", branch)
 	}
 	if maxFrames > 0 {
 		q.Set("maxFrames", strconv.Itoa(maxFrames))
+	}
+	if pageSize > 0 {
+		q.Set("pagination.pageSize", strconv.Itoa(pageSize))
+	}
+	if pageToken != "" {
+		q.Set("pagination.pageToken", pageToken)
 	}
 	path := pathf("/v1/products/%s/issues/%s/fix-context", productID, issueID)
 	if enc := q.Encode(); enc != "" {
@@ -145,6 +155,7 @@ func (c *Client) GetIssueFixContext(ctx context.Context, productID, issueID, bra
 	if err := c.Do(ctx, "GET", path, nil, &resp); err != nil {
 		return nil, err
 	}
+	resp.Context.Pagination = resp.Pagination
 	return &resp.Context, nil
 }
 

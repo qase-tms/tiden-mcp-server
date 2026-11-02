@@ -103,4 +103,6 @@ type IssueFixContext struct {
 	Component           *Component              `json:"component,omitempty"`
 	SuspectRequirements []SuspectRequirement    `json:"suspectRequirements,omitempty"`
 	TruncationSignals   []string                `json:"truncationSignals,omitempty"`
+	// Pagination pages suspectRequirements. Nil on a server that does not page.
+	Pagination *Pagination `json:"pagination,omitempty"`
 }

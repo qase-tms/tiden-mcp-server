@@ -93,3 +93,41 @@ func TestSetIssueStatusSendsReason(t *testing.T) {
 		})
 	}
 }
+
+// TestGetIssueFixContextPaging: get_issue_fix_context passes page_token and
+// page_size to tiden-app, returns the pagination, clears the payload, and
+// still works against a server that sends no pagination.
+func TestGetIssueFixContextPaging(t *testing.T) {
+	var gotQuery map[string][]string
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`{"context":{"latestEvent":{"id":"e1","payload":"secret"},"suspectRequirements":[{"id":"r1"}]},"pagination":{"nextPageToken":"n2","totalCount":45}}`))
+	}
+	body, isErr := callTool(t, handler, "get_issue_fix_context", map[string]any{
+		"product_id": "p1", "issue_id": "i1", "page_token": "n1", "page_size": 20,
+	})
+	if isErr {
+		t.Fatalf("tool error: %v", body)
+	}
+	if gotQuery["pagination.pageToken"][0] != "n1" || gotQuery["pagination.pageSize"][0] != "20" {
+		t.Errorf("query = %v", gotQuery)
+	}
+	pg, _ := body["pagination"].(map[string]any)
+	if pg["nextPageToken"] != "n2" || pg["totalCount"] != float64(45) {
+		t.Errorf("pagination = %v", body["pagination"])
+	}
+	if ev, _ := body["latestEvent"].(map[string]any); ev != nil && ev["payload"] != nil {
+		t.Errorf("payload not cleared: %v", ev)
+	}
+
+	old := func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"context":{"suspectPaths":["a.go"]}}`))
+	}
+	body, isErr = callTool(t, old, "get_issue_fix_context", map[string]any{"product_id": "p1", "issue_id": "i1"})
+	if isErr {
+		t.Fatalf("tool error against old server: %v", body)
+	}
+	if _, has := body["pagination"]; has {
+		t.Errorf("pagination = %v, want absent", body["pagination"])
+	}
+}
