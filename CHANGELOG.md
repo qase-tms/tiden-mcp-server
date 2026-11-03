@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-03
+
 ### Added
 
 - A branch verdict from `gate_check` and `get_verdict` passes on two keys the
@@ -25,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `coverageExemption` when its child specs are graded in the same answer, and
   `viaChildrenIds` on a `lookup_context` item. The keys are absent on a server
   that does not send them.
+- `get_issue_fix_context` takes `page_token` and `page_size` (default 20, max
+  50) and returns `pagination` (`nextPageToken`, `totalCount`) next to the
+  suspect specs. The server orders suspect specs by file, crash-site file
+  first. A later page returns only `suspectRequirements` and
+  `truncationSignals`. The key is absent on a server that does not page.
 
 ## [0.13.0] - 2026-10-30
 
@@ -352,6 +359,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.14.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.10.0...v0.11.0
