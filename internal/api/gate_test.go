@@ -223,3 +223,53 @@ func TestGetVerdict_ScopeAndProvenanceSurviveTheRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// A branch verdict's inherited rows (AICP-107) and its change record (AICP-108)
+// must survive the decode and the re-encode: the model is the only shape a tool
+// hands on, so a field missing here never reaches the agent.
+func TestGetVerdict_InheritedRowsAndMainChangeSurviveTheRoundTrip(t *testing.T) {
+	const body = `{"verdict":{"id":"v1","productId":"p1","scope":"VERDICT_SCOPE_BRANCH",
+		"status":"VERDICT_STATUS_NOT_VERIFIED",
+		"inheritedAfterPass":[{"requirementId":"r9","display":"TIDEN-2210","state":"no_test",
+			"viaFiles":["app/frontend/src/types/qualityGate.ts"],"addedOnMainAt":"2026-10-31T16:44:10Z",
+			"mergedIntent":"intent/2026-10-27-a-spec-in-a-planned-status"}],
+		"mainChange":{"fromStatus":"VERDICT_STATUS_PASS","toStatus":"VERDICT_STATUS_NOT_VERIFIED",
+			"intentBranch":"intent/2026-10-27-a-spec-in-a-planned-status","intentBranchId":"b2",
+			"mergedAt":"2026-10-31T16:45:21Z",
+			"rows":[{"requirementId":"r1","display":"TIDEN-147","touched":"changed","state":"failing",
+				"failingTests":["TC-1 Gate rows"]}]}}}`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, body)
+	}))
+	defer srv.Close()
+
+	v, err := New(srv.URL, "tok").GetVerdict(context.Background(), "p1", "branch", "", "intent/x")
+	if err != nil {
+		t.Fatalf("GetVerdict: %v", err)
+	}
+	if len(v.InheritedAfterPass) != 1 || v.InheritedAfterPass[0].ViaFiles[0] != "app/frontend/src/types/qualityGate.ts" ||
+		v.InheritedAfterPass[0].MergedIntent == "" || v.InheritedAfterPass[0].AddedOnMainAt == "" {
+		t.Fatalf("inheritedAfterPass = %+v, want the row with its file, time and intent", v.InheritedAfterPass)
+	}
+	mc := v.MainChange
+	if mc == nil {
+		t.Fatal("mainChange was dropped entirely")
+	}
+	if mc.FromStatus != "VERDICT_STATUS_PASS" || mc.ToStatus != "VERDICT_STATUS_NOT_VERIFIED" ||
+		mc.IntentBranch == "" || mc.IntentBranchID != "b2" || mc.MergedAt == "" {
+		t.Errorf("mainChange = %+v, want the status move, the intent and the time", mc)
+	}
+	if len(mc.Rows) != 1 || mc.Rows[0].State != "failing" || len(mc.Rows[0].FailingTests) != 1 || mc.Rows[0].Touched != "changed" {
+		t.Errorf("mainChange.rows = %+v, want the failing row", mc.Rows)
+	}
+	out, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, want := range []string{`"inheritedAfterPass"`, `"viaFiles"`, `"mergedIntent"`, `"mainChange"`, `"fromStatus"`, `"failingTests"`} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("re-encoded verdict lost %q: %s", want, out)
+		}
+	}
+}

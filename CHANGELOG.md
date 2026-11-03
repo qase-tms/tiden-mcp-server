@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A branch verdict from `gate_check` and `get_verdict` passes on two keys the
+  server sends: `inheritedAfterPass`, the neighbour specs whose gap main added
+  after the branch's last PASS (they do not lower the verdict), and
+  `mainChange`, set when a change on main made the branch verdict worse while
+  the branch got no new work (the statuses, the merged intent branch, its merge
+  time, and the affected specs with their need). Both are absent on a server
+  that does not send them.
+
 - A parent spec with no test links of its own reads its coverage from its child
   specs. `gate_check` and `get_verdict` rows (`requirements` of a subject),
   `get_traceability` rows (in the rollup, summary and detail views) and

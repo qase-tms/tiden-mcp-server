@@ -31,10 +31,62 @@ type Verdict struct {
 	// ScopeInfo says how the branch's touched scope was derived; absent from a
 	// server that still computes the whole product on a branch.
 	ScopeInfo *GateScopeInfo `json:"scopeInfo,omitempty"`
+	// InheritedAfterPass lists the neighbour specs whose gap main added after
+	// the branch's last PASS, with no new work on the branch since. They do not
+	// lower the verdict. Absent on other scopes and from an older server.
+	InheritedAfterPass []GateInheritedRow `json:"inheritedAfterPass,omitempty"`
+	// MainChange is set when a change on main made the branch verdict worse
+	// while the branch got no new work. Absent otherwise and from an older
+	// server.
+	MainChange *GateMainChange `json:"mainChange,omitempty"`
 	// --- release scope ---
 	// ReleaseCapture says which capture of the release this verdict is and
 	// where it came from; absent on other scopes and from an older server.
 	ReleaseCapture *ReleaseCapture `json:"releaseCapture,omitempty"`
+}
+
+// GateInheritedRow is one neighbour spec whose gap main added after the
+// branch's last PASS.
+type GateInheritedRow struct {
+	RequirementID string `json:"requirementId,omitempty"`
+	Display       string `json:"display,omitempty"`
+	State         string `json:"state,omitempty"` // "no_test" | "not_run"
+	// ViaFiles are the branch's changed files the spec came through.
+	ViaFiles []string `json:"viaFiles,omitempty"`
+	// AddedOnMainAt is an RFC 3339 string: when main added the spec, if that
+	// was after the branch started.
+	AddedOnMainAt string `json:"addedOnMainAt,omitempty"`
+	// MergedIntent is the intent branch whose merge into main brought the gap,
+	// when the server can tell.
+	MergedIntent string `json:"mergedIntent,omitempty"`
+}
+
+// GateMainChange says a change on main moved the branch verdict from
+// FromStatus to ToStatus. Statuses are proto enum names, e.g.
+// "VERDICT_STATUS_PASS".
+type GateMainChange struct {
+	FromStatus string `json:"fromStatus,omitempty"`
+	ToStatus   string `json:"toStatus,omitempty"`
+	// IntentBranch is the intent branch merged into main between the two
+	// verdicts; "" when the server found none.
+	IntentBranch   string `json:"intentBranch,omitempty"`
+	IntentBranchID string `json:"intentBranchId,omitempty"`
+	// MergedAt is an RFC 3339 string.
+	MergedAt string              `json:"mergedAt,omitempty"`
+	Rows     []GateMainChangeRow `json:"rows,omitempty"`
+}
+
+// GateMainChangeRow is one spec of the branch gate that the change on main
+// touched.
+type GateMainChangeRow struct {
+	RequirementID string `json:"requirementId,omitempty"`
+	Display       string `json:"display,omitempty"`
+	Touched       string `json:"touched,omitempty"`
+	// State is the need: "no_test" | "not_run" | "failing".
+	State         string   `json:"state,omitempty"`
+	ViaFiles      []string `json:"viaFiles,omitempty"`
+	AddedOnMainAt string   `json:"addedOnMainAt,omitempty"`
+	FailingTests  []string `json:"failingTests,omitempty"`
 }
 
 // ReleaseCapture is the provenance of a release's current Quality Gate
