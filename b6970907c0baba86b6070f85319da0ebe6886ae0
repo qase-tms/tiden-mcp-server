@@ -1,0 +1,37 @@
+internal/model/lookup_plan.go
+  s_5765ec741a10f6::t_8b1b5725b27a87 1-63
+internal/api/lookup_batch.go
+  s_5765ec741a10f6::t_802d93d68022b3 30-37,41-57,59-80,82
+  s_5765ec741a10f6::t_8b1b5725b27a87 1-29,38-40,58,81,83-84
+internal/mcpserver/tools.go
+  s_5765ec741a10f6::t_8b1b5725b27a87 15
+README.md
+  s_5765ec741a10f6::t_beb222223d80e9 63,106-121
+internal/mcpserver/lookup_tools_test.go
+  s_5765ec741a10f6::t_18ffe06673994c 1-45,47-83
+  s_5765ec741a10f6::t_6dad1bee02535b 46
+internal/mcpserver/server_test.go
+  s_5765ec741a10f6::t_8b1b5725b27a87 18,364
+CHANGELOG.md
+  s_5765ec741a10f6::t_beb222223d80e9 10-15
+internal/model/lookup_plan_validation.go
+  s_5765ec741a10f6::t_8b1b5725b27a87 1-44
+internal/mcpserver/lookup_tools.go
+  s_5765ec741a10f6::t_8b1b5725b27a87 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b6970907c0baba86b6070f85319da0ebe6886ae0",
+  "prompts": {},
+  "sessions": {
+    "s_5765ec741a10f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07656-3c35-7183-8d3c-3305de59949d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

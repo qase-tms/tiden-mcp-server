@@ -1,0 +1,31 @@
+internal/mcpserver/server_test.go
+  s_700b78012ff0f7::t_3289651a5a2c69 241
+  s_700b78012ff0f7::t_596dcf25edc6e7 132-147
+  s_700b78012ff0f7::t_eac2833f758ee0 37
+README.md
+  s_700b78012ff0f7::t_6d5e75e21c78db 73-74,76-77
+internal/mcpserver/progress_tools.go
+  s_700b78012ff0f7::t_68bf364eaae7d3 1-44
+internal/mcpserver/gate_tools.go
+  s_700b78012ff0f7::t_408a51de12d478 85
+  s_700b78012ff0f7::t_369dcdfe44c8e9 11-13,17-19,28,34,39,52,58,63
+  s_700b78012ff0f7::t_9815a48f73fe3e 98,104,109
+internal/mcpserver/tools.go
+  s_700b78012ff0f7::t_c5a89227a4b7e9 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "545db0ebd57cc6e17e74829fc0a5d5dabf22829f",
+  "prompts": {},
+  "sessions": {
+    "s_700b78012ff0f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8765319-726a-4855-8530-008a9be06178",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

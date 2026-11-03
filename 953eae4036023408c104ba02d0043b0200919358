@@ -1,0 +1,28 @@
+internal/mcpserver/issue_tools_test.go
+  s_466c75f11b76de::t_4e4355a9fc9111 5,8,63-93
+  s_466c75f11b76de::t_ae29f8e7e00d02 94-95
+internal/api/issue.go
+  s_466c75f11b76de::t_68eea2d9ef7902 153,160-162,164
+internal/api/issue_test.go
+  s_466c75f11b76de::t_07ad51b6ad1715 167
+internal/mcpserver/issue_tools.go
+  s_466c75f11b76de::t_415167d331c1c6 238,252
+internal/model/issue.go
+  s_466c75f11b76de::t_e20d508bcb4e9b 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "953eae4036023408c104ba02d0043b0200919358",
+  "prompts": {},
+  "sessions": {
+    "s_466c75f11b76de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eba35cc-22fa-42d8-a1aa-79a74d7d1e21",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_f4b2e66bee9b7b::t_e0b13d4891d6c5 10-11,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "093a4784483db06ffa710f408b086cb71caf6e29",
+  "prompts": {},
+  "sessions": {
+    "s_f4b2e66bee9b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b21f83d5-1902-474f-b9fc-0bee8f666960",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}
