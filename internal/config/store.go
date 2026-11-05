@@ -22,6 +22,15 @@ type Entry struct {
 	APIToken string `json:"apiToken"`
 	Account  string `json:"account,omitempty"`
 	Name     string `json:"name,omitempty"`
+	// ProductID is set by the CLI when APIToken is a product API token: the
+	// one product the token may reach. Such a token is stored as exactly one
+	// entry, for its product's workspace.
+	ProductID string `json:"productId,omitempty"`
+}
+
+// IsProductToken reports an entry whose token is a product API token.
+func (e Entry) IsProductToken() bool {
+	return e.ProductID != ""
 }
 
 // Login is a (baseUrl, apiToken) pair not yet placed under any workspace
@@ -186,8 +195,44 @@ func (s *Store) DistinctLogins() []Login {
 	return result
 }
 
+// ProductTokenEntry returns the stored entry, and its workspace id, of the
+// product API token (baseURL, apiToken); ok=false when no entry records that
+// token as a product token. Both halves must match: the same token string on
+// another server is another token.
+func (s *Store) ProductTokenEntry(baseURL, apiToken string) (wsID string, e Entry, ok bool) {
+	for _, id := range s.sortedWorkspaceIDs() {
+		e := s.Workspaces[id]
+		if e.BaseURL == baseURL && e.APIToken == apiToken && e.ProductID != "" {
+			return id, e, true
+		}
+	}
+	return "", Entry{}, false
+}
+
+// ProductTokenWorkspace returns the workspace of the stored product token
+// limited to productID; ok=false when no stored entry is one.
+func (s *Store) ProductTokenWorkspace(productID string) (wsID string, ok bool) {
+	for _, id := range s.sortedWorkspaceIDs() {
+		if s.Workspaces[id].ProductID == productID {
+			return id, true
+		}
+	}
+	return "", false
+}
+
 // HasAnyLogin reports whether the store carries any credential at all
 // (a workspace entry or a loose login).
 func (s *Store) HasAnyLogin() bool {
 	return len(s.Workspaces) > 0 || len(s.Loose) > 0
+}
+
+// sortedWorkspaceIDs is the store's workspace ids in order, so a scan over
+// them is deterministic.
+func (s *Store) sortedWorkspaceIDs() []string {
+	ids := make([]string, 0, len(s.Workspaces))
+	for id := range s.Workspaces {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }

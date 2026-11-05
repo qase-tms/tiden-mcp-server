@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -63,16 +64,39 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 
 type whoamiArgs struct{}
 
+// whoamiResult is the user's profile fields at the top level (as before),
+// plus the API token the call was made with. A product token's user is its
+// own principal (name = the token name); a publish-only token cannot read
+// the user, so only token is set.
+type whoamiResult struct {
+	*model.User
+	Token *model.TokenInfo `json:"token,omitempty"`
+}
+
 func registerWhoami(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "whoami",
-		Description: "Return the current authenticated user's profile (id, email, name).",
+		Name: "whoami",
+		Description: "Return the current authenticated user's profile (id, email, name) and the API token in use: " +
+			"its kind (personal, or product — limited to one product), scope (full access or publish-only), " +
+			"and for a product token its productId and workspaceId.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ whoamiArgs) (*mcp.CallToolResult, any, error) {
-		user, err := client.Me(ctx)
-		if err != nil {
+		info, err := client.GetTokenInfo(ctx)
+		switch {
+		case errors.Is(err, api.ErrTokenInfoUnsupported):
+			info = nil // an older server: the user alone, as before
+		case err != nil:
 			return toolError(err)
 		}
-		return toolResult(user)
+		user, err := client.Me(ctx)
+		if err != nil {
+			// A publish-only token is refused on Me; its token info is
+			// still the answer. Any other token's 403 is a real error.
+			if !info.IsPublishOnly() || !errors.Is(err, api.ErrForbidden) {
+				return toolError(err)
+			}
+			user = nil
+		}
+		return toolResult(whoamiResult{User: user, Token: info})
 	})
 }
 

@@ -35,7 +35,10 @@ const (
 	SourceRepoBinding      = "repo-binding"
 	SourceProductProbe     = "product-probe"
 	SourceRepositoryLookup = "repository-lookup"
-	SourceSingleLogin      = "single-login"
+	// SourceProductToken: the repo's product has a stored product API
+	// token, which names its workspace with no request.
+	SourceProductToken = "product-token"
+	SourceSingleLogin  = "single-login"
 )
 
 // Client is the subset of api.Client the ladder needs to probe a login. A
@@ -74,6 +77,9 @@ type Resolved struct {
 	WorkspaceName string
 	Account       string
 	Source        string
+	// ProductID is set when APIToken is a product API token (as the CLI
+	// recorded it in the store): the one product it can reach.
+	ProductID string
 }
 
 // Error is returned when the ladder cannot resolve. Code is one of
@@ -117,38 +123,51 @@ func Resolve(ctx context.Context, d Deps) (*Resolved, error) {
 	if ws != "" {
 		// "a workspace id override without a token selects that entry" -
 		// skip straight to step 3 (token for the target workspace).
-		return resolveTokenForWorkspace(ctx, d, store, ws, wsSrc)
+		return resolveTokenForWorkspace(ctx, d, store, ws, wsSrc, repoFile.ProductID)
 	}
 
 	if !store.HasAnyLogin() {
 		return nil, &Error{Code: "NO_LOGIN", Message: "Not logged in. Run `tiden setup`."}
 	}
 
-	targetWS, source, err := determineTargetWorkspace(ctx, d, store, repoFile)
+	target, err := determineTargetWorkspace(ctx, d, store, repoFile)
 	if err != nil {
 		return nil, err
 	}
-	return resolveTokenForWorkspace(ctx, d, store, targetWS, source)
+	return resolveTokenForWorkspace(ctx, d, store, target.workspaceID, target.source, target.productID)
+}
+
+// target is what determineTargetWorkspace decided: the workspace, how, and
+// the product the repository belongs to when a step learned it ("" when
+// none did). The product decides whether a stored product token for that
+// workspace can serve the repository.
+type target struct {
+	workspaceID, source, productID string
 }
 
 // determineTargetWorkspace runs steps (a)-(d) of the ladder: repo binding
 // workspaceId, else repo binding productId (product probe), else repository
 // lookup, else the sole workspace across every login.
-func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, repoFile *repoconfig.File) (string, string, error) {
+func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, repoFile *repoconfig.File) (target, error) {
 	if repoFile.WorkspaceID != "" {
-		return repoFile.WorkspaceID, SourceRepoBinding, nil
+		return target{repoFile.WorkspaceID, SourceRepoBinding, repoFile.ProductID}, nil
 	}
 
 	if repoFile.ProductID != "" {
+		// A stored product token for this very product names its workspace
+		// with zero requests: the token belongs to the product.
+		if wsID, ok := store.ProductTokenWorkspace(repoFile.ProductID); ok {
+			return target{wsID, SourceProductToken, repoFile.ProductID}, nil
+		}
 		wsID, unreachable := probeProduct(ctx, d, store, repoFile.ProductID)
 		if wsID != "" {
-			return wsID, SourceProductProbe, nil
+			return target{wsID, SourceProductProbe, repoFile.ProductID}, nil
 		}
 		msg := fmt.Sprintf("Product %s is not visible to any logged-in account.", repoFile.ProductID)
 		if unreachable {
 			msg += " (Some accounts could not be reached to check.)"
 		}
-		return "", "", &Error{Code: "E2", Message: msg, Hints: []string{"tiden setup"}}
+		return target{}, &Error{Code: "E2", Message: msg, Hints: []string{"tiden setup"}}
 	}
 
 	if d.RepositoryID != "" {
@@ -156,9 +175,9 @@ func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, 
 		if !unavailable {
 			switch {
 			case len(candidates) == 1:
-				return candidates[0].WorkspaceID, SourceRepositoryLookup, nil
+				return target{candidates[0].WorkspaceID, SourceRepositoryLookup, candidates[0].ProductID}, nil
 			case len(candidates) > 1:
-				return "", "", e3FromRepositoryCandidates(candidates)
+				return target{}, e3FromRepositoryCandidates(candidates)
 			}
 		}
 	}
@@ -166,27 +185,40 @@ func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, 
 	candidates := gatherAllLoginWorkspaces(ctx, d, store)
 	switch len(candidates) {
 	case 1:
-		return candidates[0].id, SourceSingleLogin, nil
+		return target{candidates[0].id, SourceSingleLogin, ""}, nil
 	case 0:
-		return "", "", &Error{Code: "NO_LOGIN", Message: "No workspace found for any logged-in account. Run `tiden setup`."}
+		return target{}, &Error{Code: "NO_LOGIN", Message: "No workspace found for any logged-in account. Run `tiden setup`."}
 	default:
-		return "", "", e3FromWorkspaceCandidates(candidates)
+		return target{}, e3FromWorkspaceCandidates(candidates)
 	}
 }
 
 // resolveTokenForWorkspace is step 3 ("Token for the target"): use the
 // known entry with zero requests, else find a login whose ListWorkspaces
 // lists wsID.
-func resolveTokenForWorkspace(ctx context.Context, d Deps, store *config.Store, wsID, source string) (*Resolved, error) {
-	if e, ok := store.Workspaces[wsID]; ok {
+//
+// A stored product API token is accepted as it is: it belongs to one
+// product, the CLI stored it as the one entry for that product's workspace,
+// and it is never sent a ListWorkspaces membership probe (a publish-only one
+// would be refused, and a full one can only list its own workspace, which
+// the store already holds). When the repository is bound to another product
+// (wantProduct) than the entry's product token can reach, another login that
+// lists wsID is preferred; with none, the product token is still used and its
+// tools answer the server's "limited to product" refusal.
+func resolveTokenForWorkspace(ctx context.Context, d Deps, store *config.Store, wsID, source, wantProduct string) (*Resolved, error) {
+	e, known := store.Workspaces[wsID]
+	if known && (!e.IsProductToken() || wantProduct == "" || e.ProductID == wantProduct) {
 		return &Resolved{
 			BaseURL: e.BaseURL, APIToken: e.APIToken,
 			WorkspaceID: wsID, WorkspaceName: e.Name, Account: e.Account,
-			Source: source,
+			Source: source, ProductID: e.ProductID,
 		}, nil
 	}
 
 	for _, login := range store.DistinctLogins() {
+		if _, _, isProductToken := store.ProductTokenEntry(login.BaseURL, login.APIToken); isProductToken {
+			continue
+		}
 		client := d.NewClient(login.BaseURL, login.APIToken)
 		resp, err := client.ListWorkspaces(ctx)
 		if err != nil {
@@ -203,6 +235,14 @@ func resolveTokenForWorkspace(ctx context.Context, d Deps, store *config.Store, 
 				}, nil
 			}
 		}
+	}
+
+	if known {
+		return &Resolved{
+			BaseURL: e.BaseURL, APIToken: e.APIToken,
+			WorkspaceID: wsID, WorkspaceName: e.Name, Account: e.Account,
+			Source: source, ProductID: e.ProductID,
+		}, nil
 	}
 
 	return nil, &Error{
@@ -341,13 +381,16 @@ func resolveOverrideToken(_ context.Context, _ Deps, store *config.Store, repoFi
 	}
 
 	account := accountForToken(store, token)
+	// A token the CLI stored as a product token on this server: its product
+	// and workspace are known locally, still with zero requests.
+	productWS, productEntry, isProductToken := store.ProductTokenEntry(baseURL, token)
 
 	build := func(wsID string) *Resolved {
 		wsName := ""
 		if e, ok := store.Workspaces[wsID]; ok {
 			wsName = e.Name
 		}
-		return &Resolved{BaseURL: baseURL, APIToken: token, WorkspaceID: wsID, WorkspaceName: wsName, Account: account, Source: tokenSrc}
+		return &Resolved{BaseURL: baseURL, APIToken: token, WorkspaceID: wsID, WorkspaceName: wsName, Account: account, Source: tokenSrc, ProductID: productEntry.ProductID}
 	}
 
 	if wsOverride != "" {
@@ -355,6 +398,9 @@ func resolveOverrideToken(_ context.Context, _ Deps, store *config.Store, repoFi
 	}
 	if repoFile.WorkspaceID != "" {
 		return build(repoFile.WorkspaceID), nil
+	}
+	if isProductToken {
+		return build(productWS), nil
 	}
 	return build(""), nil
 }
