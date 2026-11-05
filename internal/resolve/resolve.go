@@ -74,6 +74,9 @@ type Resolved struct {
 	WorkspaceName string
 	Account       string
 	Source        string
+	// ProductID is set when APIToken is a product API token (as the CLI
+	// recorded it in the store): the one product it can reach.
+	ProductID string
 }
 
 // Error is returned when the ladder cannot resolve. Code is one of
@@ -117,7 +120,7 @@ func Resolve(ctx context.Context, d Deps) (*Resolved, error) {
 	if ws != "" {
 		// "a workspace id override without a token selects that entry" -
 		// skip straight to step 3 (token for the target workspace).
-		return resolveTokenForWorkspace(ctx, d, store, ws, wsSrc)
+		return resolveTokenForWorkspace(ctx, d, store, ws, wsSrc, repoFile.ProductID)
 	}
 
 	if !store.HasAnyLogin() {
@@ -128,7 +131,7 @@ func Resolve(ctx context.Context, d Deps) (*Resolved, error) {
 	if err != nil {
 		return nil, err
 	}
-	return resolveTokenForWorkspace(ctx, d, store, targetWS, source)
+	return resolveTokenForWorkspace(ctx, d, store, targetWS, source, repoFile.ProductID)
 }
 
 // determineTargetWorkspace runs steps (a)-(d) of the ladder: repo binding
@@ -140,6 +143,11 @@ func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, 
 	}
 
 	if repoFile.ProductID != "" {
+		// A stored product token for this very product names its workspace
+		// with zero requests: the token belongs to the product.
+		if wsID, ok := store.ProductTokenWorkspace(repoFile.ProductID); ok {
+			return wsID, SourceProductProbe, nil
+		}
 		wsID, unreachable := probeProduct(ctx, d, store, repoFile.ProductID)
 		if wsID != "" {
 			return wsID, SourceProductProbe, nil
@@ -177,16 +185,29 @@ func determineTargetWorkspace(ctx context.Context, d Deps, store *config.Store, 
 // resolveTokenForWorkspace is step 3 ("Token for the target"): use the
 // known entry with zero requests, else find a login whose ListWorkspaces
 // lists wsID.
-func resolveTokenForWorkspace(ctx context.Context, d Deps, store *config.Store, wsID, source string) (*Resolved, error) {
-	if e, ok := store.Workspaces[wsID]; ok {
+//
+// A stored product API token is accepted as it is: it belongs to one
+// product, the CLI stored it as the one entry for that product's workspace,
+// and it is never sent a ListWorkspaces membership probe (a publish-only one
+// would be refused, and a full one can only list its own workspace, which
+// the store already holds). When the repository is bound to another product
+// (wantProduct) than the entry's product token can reach, another login that
+// lists wsID is preferred; with none, the product token is still used and its
+// tools answer the server's "limited to product" refusal.
+func resolveTokenForWorkspace(ctx context.Context, d Deps, store *config.Store, wsID, source, wantProduct string) (*Resolved, error) {
+	e, known := store.Workspaces[wsID]
+	if known && (!e.IsProductToken() || wantProduct == "" || e.ProductID == wantProduct) {
 		return &Resolved{
 			BaseURL: e.BaseURL, APIToken: e.APIToken,
 			WorkspaceID: wsID, WorkspaceName: e.Name, Account: e.Account,
-			Source: source,
+			Source: source, ProductID: e.ProductID,
 		}, nil
 	}
 
 	for _, login := range store.DistinctLogins() {
+		if _, _, isProductToken := store.ProductTokenEntry(login.BaseURL, login.APIToken); isProductToken {
+			continue
+		}
 		client := d.NewClient(login.BaseURL, login.APIToken)
 		resp, err := client.ListWorkspaces(ctx)
 		if err != nil {
@@ -203,6 +224,14 @@ func resolveTokenForWorkspace(ctx context.Context, d Deps, store *config.Store, 
 				}, nil
 			}
 		}
+	}
+
+	if known {
+		return &Resolved{
+			BaseURL: e.BaseURL, APIToken: e.APIToken,
+			WorkspaceID: wsID, WorkspaceName: e.Name, Account: e.Account,
+			Source: source, ProductID: e.ProductID,
+		}, nil
 	}
 
 	return nil, &Error{
@@ -341,13 +370,16 @@ func resolveOverrideToken(_ context.Context, _ Deps, store *config.Store, repoFi
 	}
 
 	account := accountForToken(store, token)
+	// A token the CLI stored as a product token: its product and workspace
+	// are known locally, still with zero requests.
+	productWS, productEntry, isProductToken := store.ProductTokenEntryByToken(token)
 
 	build := func(wsID string) *Resolved {
 		wsName := ""
 		if e, ok := store.Workspaces[wsID]; ok {
 			wsName = e.Name
 		}
-		return &Resolved{BaseURL: baseURL, APIToken: token, WorkspaceID: wsID, WorkspaceName: wsName, Account: account, Source: tokenSrc}
+		return &Resolved{BaseURL: baseURL, APIToken: token, WorkspaceID: wsID, WorkspaceName: wsName, Account: account, Source: tokenSrc, ProductID: productEntry.ProductID}
 	}
 
 	if wsOverride != "" {
@@ -355,6 +387,9 @@ func resolveOverrideToken(_ context.Context, _ Deps, store *config.Store, repoFi
 	}
 	if repoFile.WorkspaceID != "" {
 		return build(repoFile.WorkspaceID), nil
+	}
+	if isProductToken {
+		return build(productWS), nil
 	}
 	return build(""), nil
 }

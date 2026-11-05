@@ -22,6 +22,15 @@ type Entry struct {
 	APIToken string `json:"apiToken"`
 	Account  string `json:"account,omitempty"`
 	Name     string `json:"name,omitempty"`
+	// ProductID is set by the CLI when APIToken is a product API token: the
+	// one product the token may reach. Such a token is stored as exactly one
+	// entry, for its product's workspace.
+	ProductID string `json:"productId,omitempty"`
+}
+
+// IsProductToken reports an entry whose token is a product API token.
+func (e Entry) IsProductToken() bool {
+	return e.ProductID != ""
 }
 
 // Login is a (baseUrl, apiToken) pair not yet placed under any workspace
@@ -184,6 +193,55 @@ func (s *Store) DistinctLogins() []Login {
 		add(l.BaseURL, l.APIToken, l.Account)
 	}
 	return result
+}
+
+func (s *Store) productTokenEntry(baseURL, apiToken string) (wsID string, e Entry, ok bool) {
+	ids := make([]string, 0, len(s.Workspaces))
+	for id := range s.Workspaces {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		e := s.Workspaces[id]
+		if e.BaseURL == baseURL && e.APIToken == apiToken && e.ProductID != "" {
+			return id, e, true
+		}
+	}
+	return "", Entry{}, false
+}
+
+// ProductTokenEntry returns the stored entry, and its workspace id, of the
+// product API token (baseURL, apiToken); ok=false when no entry records that
+// token as a product token.
+func (s *Store) ProductTokenEntry(baseURL, apiToken string) (wsID string, e Entry, ok bool) {
+	return s.productTokenEntry(baseURL, apiToken)
+}
+
+// ProductTokenEntryByToken is ProductTokenEntry when only the token is known
+// (an override token whose base URL is not decided yet).
+func (s *Store) ProductTokenEntryByToken(apiToken string) (wsID string, e Entry, ok bool) {
+	for _, l := range s.DistinctLogins() {
+		if l.APIToken == apiToken {
+			return s.productTokenEntry(l.BaseURL, apiToken)
+		}
+	}
+	return "", Entry{}, false
+}
+
+// ProductTokenWorkspace returns the workspace of the stored product token
+// limited to productID; ok=false when no stored entry is one.
+func (s *Store) ProductTokenWorkspace(productID string) (wsID string, ok bool) {
+	ids := make([]string, 0, len(s.Workspaces))
+	for id := range s.Workspaces {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		if s.Workspaces[id].ProductID == productID {
+			return id, true
+		}
+	}
+	return "", false
 }
 
 // HasAnyLogin reports whether the store carries any credential at all

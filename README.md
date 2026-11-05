@@ -47,15 +47,18 @@ one **per repository**, in this order — the first that applies wins:
    explicit token override is used exactly as given, with no server lookup
    at all: its workspace is `--workspace-id`/`TIDEN_WORKSPACE_ID` when set,
    else the repo-local `.tiden/config.json`'s `workspaceId` when this
-   directory is bound, else left unset (a tool call that needs one and gets
+   directory is bound, else the workspace of a product API token the CLI
+   stored, else left unset (a tool call that needs one and gets
    none reports that plainly, the same as before TIDEN-68's per-repository
    resolution existed).
 2. Without a token override: `--workspace-id`/`TIDEN_WORKSPACE_ID` — selects
    that workspace's entry.
 3. The repo-local `.tiden/config.json` (walked up from the working
    directory) — its `workspaceId`, if bound.
-4. That file's `productId` — looked up against each logged-in account until
-   one can see the product.
+4. That file's `productId` — a product API token stored for that product
+   (by `tiden setup --api-token`) names its workspace directly; otherwise it
+   is looked up against each logged-in account until one can see the
+   product.
 5. The repository's `origin` remote — looked up against the server, if it
    already knows this repository.
 6. The sole workspace across every logged-in account, when there is exactly

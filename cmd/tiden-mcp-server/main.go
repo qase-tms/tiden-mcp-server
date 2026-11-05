@@ -166,5 +166,10 @@ func printDiagnostic(w *os.File, r *resolve.Resolved) {
 	if name == "" {
 		name = r.WorkspaceID
 	}
+	if r.ProductID != "" {
+		// A product API token: name the one product it can reach.
+		fmt.Fprintf(w, "tiden-mcp-server: workspace %s (%s) as %s, limited to product %s [%s]\n", name, r.WorkspaceID, account, r.ProductID, r.Source)
+		return
+	}
 	fmt.Fprintf(w, "tiden-mcp-server: workspace %s (%s) as %s [%s]\n", name, r.WorkspaceID, account, r.Source)
 }
