@@ -151,6 +151,9 @@ claude mcp add tiden -- tiden-mcp-server
 | `get_issue_fix_context` | Everything needed to fix one error in one call: frames, implicated repo files, environment split, and the covering tests of the specs those files implement |
 | `list_release_issues` | Post-deploy regression check: issues first seen in a release, plus a count of all issues seen during it |
 | `set_issue_status` | Set an issue to unresolved, resolved, or ignored |
+| `link_issue_specs` | Record which specs an issue violates: `product_id`, `links` (1-200 `{issue_id, spec_ref}` pairs; `spec_ref` is `KEY-N`, a number or a UUID), optional `branch`. All-or-nothing; returns `linked` or `already_linked` per pair |
+| `unlink_issue_specs` | Remove issue-to-spec links; same arguments. Returns `unlinked` or `not_linked` per pair |
+| `list_spec_issues` | Issues linked to a spec: `product_id`, `spec_ref`, optional `branch` and `limit` (1-100) |
 
 All tools return compact JSON matching the Tiden public API response shapes.
 In the API a spec is the `requirement` resource, so results keep requirement

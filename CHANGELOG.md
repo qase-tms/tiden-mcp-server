@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `link_issue_specs` and `unlink_issue_specs` record and remove the specs an
+  issue violates, in one all-or-nothing call of 1 to 200 `{issue_id, spec_ref}`
+  pairs. A `spec_ref` is `KEY-N`, a bare number or a spec UUID, read on an
+  optional `branch`; the refs resolve in one call and a ref that does not
+  resolve fails the whole call. `list_spec_issues` lists the issues linked to a
+  spec.
+- `get_issue` and `get_issue_fix_context` pass on `linkedRequirements`, and
+  `get_issue_fix_context` also passes on `nextStep` and the `linked` flag of
+  each suspect spec. The keys are absent on a server that does not send them.
+
 ## [0.14.0] - 2026-11-03
 
 ### Added

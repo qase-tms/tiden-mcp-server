@@ -188,7 +188,7 @@ type getIssueFixContextArgs struct {
 func registerGetIssueFixContext(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_issue_fix_context",
-		Description: "Everything needed to fix one error, in one call: the issue, its symbolicated stack frames, the repo files those frames implicate (suspectPaths — open these first), where it is happening by environment, and — for each spec those files implement — whether a test already covers it. This replaces combining get_issue, get_issue_event_stats and spec lookups: one round-trip, and it reports which suspect path matched which spec so a wrong match is visible. Start every fix here. Suspect specs are ordered by file, crash-site file first, 20 per page; request the next page only when the needed spec is not on the pages already read.",
+		Description: "Everything needed to fix one error, in one call: the issue, its symbolicated stack frames, the repo files those frames implicate (suspectPaths — open these first), where it is happening by environment, and — for each spec those files implement — whether a test already covers it. This replaces combining get_issue, get_issue_event_stats and spec lookups: one round-trip, and it reports which suspect path matched which spec so a wrong match is visible. Start every fix here. Once you know which spec the error violates, record it with link_issue_specs. Suspect specs are ordered by file, crash-site file first, 20 per page; request the next page only when the needed spec is not on the pages already read.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args getIssueFixContextArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
@@ -243,7 +243,7 @@ type setIssueStatusArgs struct {
 func registerSetIssueStatus(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_issue_status",
-		Description: "Set an issue's status to unresolved, resolved, or ignored. Only resolve an issue whose fix you have verified — every transition is recorded with its actor, and the grouping worker will reopen the issue as a regression if it recurs.",
+		Description: "Set an issue's status to unresolved, resolved, or ignored. Only resolve an issue whose fix you have verified — every transition is recorded with its actor, and the grouping worker will reopen the issue as a regression if it recurs. To record which spec the error violates, call link_issue_specs.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args setIssueStatusArgs) (*mcp.CallToolResult, any, error) {
 		if args.ID == "" {
 			return toolError(errMissingField("id"))
