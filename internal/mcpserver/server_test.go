@@ -61,6 +61,9 @@ var allExpectedTools = []string{
 	"get_issue_fix_context",
 	"list_release_issues",
 	"set_issue_status",
+	"link_issue_specs",
+	"unlink_issue_specs",
+	"list_spec_issues",
 }
 
 // newTestServer creates an MCP server backed by a throwaway api.Client.

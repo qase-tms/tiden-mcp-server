@@ -72,6 +72,9 @@ func (c *Client) ListIssues(ctx context.Context, productID string, opts ListIssu
 type GetIssueResponse struct {
 	Issue       model.Issue       `json:"issue"`
 	LatestEvent *model.IssueEvent `json:"latestEvent,omitempty"`
+	// LinkedRequirements are the specs the issue is linked to. Absent on a
+	// server that does not send them.
+	LinkedRequirements []model.IssueLinkedRequirement `json:"linkedRequirements,omitempty"`
 }
 
 func (c *Client) GetIssue(ctx context.Context, id string) (*GetIssueResponse, error) {

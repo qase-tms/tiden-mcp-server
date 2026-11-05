@@ -54,6 +54,9 @@ func registerTools(srv *mcp.Server, client *api.Client, defaultWorkspaceID strin
 	registerGetIssueFixContext(srv, client)
 	registerListReleaseIssues(srv, client)
 	registerSetIssueStatus(srv, client)
+	registerLinkIssueSpecs(srv, client)
+	registerUnlinkIssueSpecs(srv, client)
+	registerListSpecIssues(srv, client)
 }
 
 // -- whoami ------------------------------------------------------------------

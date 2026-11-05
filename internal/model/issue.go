@@ -88,6 +88,29 @@ type SuspectRequirement struct {
 	MatchedPaths []string       `json:"matchedPaths,omitempty"`
 	Coverage     string         `json:"coverage,omitempty"`
 	Tests        []CoveringTest `json:"tests,omitempty"`
+	// Linked is true when the issue is linked to this spec.
+	Linked bool `json:"linked,omitempty"`
+}
+
+// IssueLinkedRequirement is one spec an issue is linked to. BranchName is empty
+// for a spec on main.
+type IssueLinkedRequirement struct {
+	RequirementID string `json:"requirementId"`
+	SeqNum        int    `json:"seqNum,omitempty"`
+	Title         string `json:"title,omitempty"`
+	Status        string `json:"status,omitempty"`
+	BranchName    string `json:"branchName,omitempty"`
+	BranchClosed  bool   `json:"branchClosed,omitempty"`
+	LinkedAt      string `json:"linkedAt,omitempty"`
+	LinkedBy      string `json:"linkedBy,omitempty"`
+}
+
+// LinkedRequirementContext is a linked spec with its coverage verdict
+// (verified, not_run or no_test).
+type LinkedRequirementContext struct {
+	Requirement IssueLinkedRequirement `json:"requirement"`
+	Coverage    string                 `json:"coverage,omitempty"`
+	Tests       []CoveringTest         `json:"tests,omitempty"`
 }
 
 // IssueFixContext is the composed triage pack: what broke, where, which files
@@ -103,6 +126,10 @@ type IssueFixContext struct {
 	Component           *Component              `json:"component,omitempty"`
 	SuspectRequirements []SuspectRequirement    `json:"suspectRequirements,omitempty"`
 	TruncationSignals   []string                `json:"truncationSignals,omitempty"`
+	// LinkedRequirements are the specs already linked to the issue; set on the
+	// first page only. NextStep is set when the issue has no linked spec.
+	LinkedRequirements []LinkedRequirementContext `json:"linkedRequirements,omitempty"`
+	NextStep           string                     `json:"nextStep,omitempty"`
 	// Pagination pages suspectRequirements. Nil on a server that does not page.
 	Pagination *Pagination `json:"pagination,omitempty"`
 }
