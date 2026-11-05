@@ -12,14 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Product API tokens. `whoami` returns the API token in use next to the user
   fields: its kind (personal or product), scope, and for a product token the
   `productId` and `workspaceId` it is limited to. A publish-only token, which
-  cannot read the user, returns the token alone; a server without
+  cannot read the user, returns the token alone (any other token's 403 is
+  still an error); a server without
   `GET /v1/auth/token` returns the user alone, as before.
 - The server reads the `productId` the CLI stores for a product token. A
   repository bound to that product resolves to the token's workspace with no
   request, a token override known as a product token takes its workspace, and
   a product token is never sent a `ListWorkspaces` membership probe. When the
-  repository is bound to another product, another login for the same
-  workspace is preferred. The startup line names the token's product.
+  repository belongs to another product (by its binding or by repository
+  lookup), another login for the same workspace is preferred. An override
+  token counts as a stored product token only on the base URL it was stored
+  for. The startup line names the token's product, and a resolution through
+  a stored product token is labelled `product-token`.
 
 ## [0.15.0] - 2026-11-05
 

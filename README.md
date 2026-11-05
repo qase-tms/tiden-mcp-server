@@ -108,7 +108,7 @@ claude mcp add tiden -- tiden-mcp-server
 
 | Tool | Description |
 |---|---|
-| `whoami` | Current authenticated user |
+| `whoami` | Current authenticated user and the API token in use (kind, scope, product) |
 | `list_workspaces` | Workspaces the user belongs to |
 | `list_products` | Products in a workspace |
 | `get_product` | Fetch one product by id (name, code, description) |

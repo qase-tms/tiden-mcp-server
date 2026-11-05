@@ -90,8 +90,8 @@ func registerWhoami(srv *mcp.Server, client *api.Client) {
 		user, err := client.Me(ctx)
 		if err != nil {
 			// A publish-only token is refused on Me; its token info is
-			// still the answer.
-			if info == nil || !errors.Is(err, api.ErrForbidden) {
+			// still the answer. Any other token's 403 is a real error.
+			if !info.IsPublishOnly() || !errors.Is(err, api.ErrForbidden) {
 				return toolError(err)
 			}
 			user = nil

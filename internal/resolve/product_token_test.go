@@ -34,7 +34,7 @@ func TestResolve_ProductBindingMatchesStoredProductToken_ZeroRequests(t *testing
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
-	if got.WorkspaceID != "ws-1" || got.APIToken != "tok-p" || got.ProductID != "P1" || got.Account != "CI (product token)" || got.Source != SourceProductProbe {
+	if got.WorkspaceID != "ws-1" || got.APIToken != "tok-p" || got.ProductID != "P1" || got.Account != "CI (product token)" || got.Source != SourceProductToken {
 		t.Errorf("got = %+v, want the stored product token for ws-1/P1", got)
 	}
 }
@@ -112,5 +112,60 @@ func TestResolve_ProductTokenForAnotherProduct_NoAlternativeKeepsIt(t *testing.T
 	}
 	if got.APIToken != "tok-p" || got.ProductID != "P1" {
 		t.Errorf("got = %+v, want the product token kept", got)
+	}
+}
+
+// Repository lookup finds the repo under product P2 in ws-1, whose stored
+// entry is a product token for P1: the product the lookup found decides, so
+// the personal login that lists ws-1 is used rather than a token that would
+// answer 403 on every call.
+func TestResolve_RepositoryLookupProduct_PrefersLoginThatCanReachIt(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch auth, path := r.Header.Get("Authorization"), r.URL.Path; {
+		case auth == "Bearer tok-a" && path == "/v1/repositories/resolve":
+			_, _ = w.Write([]byte(`{"candidates":[{"productId":"P2","productName":"Two","workspaceId":"ws-1","workspaceName":"One"}]}`))
+		case auth == "Bearer tok-a" && path == "/v1/workspaces":
+			_, _ = w.Write([]byte(`{"workspaces":[{"id":"ws-1","name":"One"},{"id":"ws-2","name":"Two"}]}`))
+		default:
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"code":7,"message":"this API token is limited to product P1"}`))
+		}
+	}))
+	defer srv.Close()
+
+	store := productTokenStore()
+	store.Workspaces["ws-1"] = config.Entry{BaseURL: srv.URL, APIToken: "tok-p", Account: "CI (product token)", Name: "One", ProductID: "P1"}
+	store.Workspaces["ws-2"] = config.Entry{BaseURL: srv.URL, APIToken: "tok-a", Account: "a@example.dev", Name: "Two"}
+
+	got, err := Resolve(context.Background(), Deps{
+		Store:        store,
+		RepoFile:     &repoconfig.File{},
+		RepositoryID: "github.com/org/repo",
+		NewClient:    realClientFactory(5 * time.Second),
+	})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if got.APIToken != "tok-a" || got.WorkspaceID != "ws-1" || got.ProductID != "" || got.Source != SourceRepositoryLookup {
+		t.Errorf("got = %+v, want the personal login for ws-1 via repository lookup", got)
+	}
+}
+
+// The same token string on another server is another token: an override
+// token is a known product token only on the base URL the CLI stored it for.
+func TestResolve_OverrideTokenOnAnotherServer_IsNotTheStoredProductToken(t *testing.T) {
+	got, err := Resolve(context.Background(), Deps{
+		Store:       productTokenStore(),
+		RepoFile:    &repoconfig.File{},
+		EnvAPIToken: "tok-p",
+		EnvBaseURL:  "https://other.example",
+		NewClient:   noRequestsAllowed(t),
+	})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if got.WorkspaceID != "" || got.ProductID != "" || got.BaseURL != "https://other.example" {
+		t.Errorf("got = %+v, want no workspace and no product from the other server's entry", got)
 	}
 }

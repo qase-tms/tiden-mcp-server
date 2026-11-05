@@ -101,3 +101,20 @@ func TestWhoami_OldServerReturnsUserOnly(t *testing.T) {
 		t.Fatalf("whoami = %v, want the user alone", out)
 	}
 }
+
+// Only a publish-only token's 403 on Me is expected. A full-access token
+// refused on Me is a real error, not an empty user.
+func TestWhoami_FullTokenRefusedOnMeIsAnError(t *testing.T) {
+	_, isErr := callWhoami(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/auth/token" {
+			_, _ = w.Write([]byte(`{"id":"t1","name":"CI","kind":"API_TOKEN_KIND_PRODUCT","scope":"API_TOKEN_SCOPE_FULL","productId":"P1","workspaceId":"ws-1"}`))
+			return
+		}
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"code":7,"message":"permission denied"}`))
+	})
+	if !isErr {
+		t.Fatal("whoami succeeded, want the 403 reported")
+	}
+}

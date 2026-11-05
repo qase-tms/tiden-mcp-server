@@ -195,13 +195,12 @@ func (s *Store) DistinctLogins() []Login {
 	return result
 }
 
-func (s *Store) productTokenEntry(baseURL, apiToken string) (wsID string, e Entry, ok bool) {
-	ids := make([]string, 0, len(s.Workspaces))
-	for id := range s.Workspaces {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
+// ProductTokenEntry returns the stored entry, and its workspace id, of the
+// product API token (baseURL, apiToken); ok=false when no entry records that
+// token as a product token. Both halves must match: the same token string on
+// another server is another token.
+func (s *Store) ProductTokenEntry(baseURL, apiToken string) (wsID string, e Entry, ok bool) {
+	for _, id := range s.sortedWorkspaceIDs() {
 		e := s.Workspaces[id]
 		if e.BaseURL == baseURL && e.APIToken == apiToken && e.ProductID != "" {
 			return id, e, true
@@ -210,33 +209,10 @@ func (s *Store) productTokenEntry(baseURL, apiToken string) (wsID string, e Entr
 	return "", Entry{}, false
 }
 
-// ProductTokenEntry returns the stored entry, and its workspace id, of the
-// product API token (baseURL, apiToken); ok=false when no entry records that
-// token as a product token.
-func (s *Store) ProductTokenEntry(baseURL, apiToken string) (wsID string, e Entry, ok bool) {
-	return s.productTokenEntry(baseURL, apiToken)
-}
-
-// ProductTokenEntryByToken is ProductTokenEntry when only the token is known
-// (an override token whose base URL is not decided yet).
-func (s *Store) ProductTokenEntryByToken(apiToken string) (wsID string, e Entry, ok bool) {
-	for _, l := range s.DistinctLogins() {
-		if l.APIToken == apiToken {
-			return s.productTokenEntry(l.BaseURL, apiToken)
-		}
-	}
-	return "", Entry{}, false
-}
-
 // ProductTokenWorkspace returns the workspace of the stored product token
 // limited to productID; ok=false when no stored entry is one.
 func (s *Store) ProductTokenWorkspace(productID string) (wsID string, ok bool) {
-	ids := make([]string, 0, len(s.Workspaces))
-	for id := range s.Workspaces {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
+	for _, id := range s.sortedWorkspaceIDs() {
 		if s.Workspaces[id].ProductID == productID {
 			return id, true
 		}
@@ -248,4 +224,15 @@ func (s *Store) ProductTokenWorkspace(productID string) (wsID string, ok bool) {
 // (a workspace entry or a loose login).
 func (s *Store) HasAnyLogin() bool {
 	return len(s.Workspaces) > 0 || len(s.Loose) > 0
+}
+
+// sortedWorkspaceIDs is the store's workspace ids in order, so a scan over
+// them is deterministic.
+func (s *Store) sortedWorkspaceIDs() []string {
+	ids := make([]string, 0, len(s.Workspaces))
+	for id := range s.Workspaces {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }
