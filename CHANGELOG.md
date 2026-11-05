@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-05
+
 ### Added
 
 - Product API tokens. `whoami` returns the API token in use next to the user
@@ -391,6 +393,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.16.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.12.0...v0.13.0
