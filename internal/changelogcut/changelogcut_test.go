@@ -1,8 +1,10 @@
 package changelogcut
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -64,6 +66,12 @@ func TestParseEntryRejects(t *testing.T) {
 			strings.SplitAfter(validEntry, "**Section:** Fixed\n")[0] + "\n\n", []string{"body"}},
 		{"heading in body", "2026-11-07-x.md", validEntry + "\n### Notes\n\nMore.\n", []string{"heading"}},
 		{"indented heading in body", "2026-11-07-x.md", validEntry + "\n  ## Why\n", []string{"heading"}},
+		{"heading after a bare CR", "2026-11-07-x.md",
+			validEntry + "Fixed command.\r## [9.9.9] - 2026-11-07\n", []string{"heading"}},
+		{"link reference definition", "2026-11-07-x.md",
+			validEntry + "\n[0.53.0]: https://example.test/wrong\n", []string{"reference"}},
+		{"indented link reference definition", "2026-11-07-x.md",
+			validEntry + "\n  [docs]: https://example.test/\n", []string{"reference"}},
 		{"every rule reported", "2026-11-07-x.md",
 			strings.SplitAfter(strings.Replace(validEntry, "**Section:** Fixed", "**Section:** Improved", 1),
 				"**Section:** Improved\n")[0],
@@ -159,6 +167,7 @@ func TestCutRejects(t *testing.T) {
 		{"same version", in, goldenEntries(), "0.52.0", "2026-11-07", "not newer than 0.52.0"},
 		{"older version", in, goldenEntries(), "0.51.9", "2026-11-07", "not newer than 0.52.0"},
 		{"v prefix", in, goldenEntries(), "v0.53.0", "2026-11-07", "X.Y.Z"},
+		{"leading zero", in, goldenEntries(), "0.053.0", "2026-11-07", "X.Y.Z"},
 		{"bad date", in, goldenEntries(), "0.53.0", "07.11.2026", "YYYY-MM-DD"},
 		{"text outside a subsection",
 			strings.Replace(in, "## [Unreleased]\n\n", "## [Unreleased]\n\n- stray bullet\n\n", 1),
@@ -210,7 +219,7 @@ func TestRun(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "2026-11-07-a.md"), entryText("Entry A", "2026-11-07", Fixed, "Fix a."))
 	writeFile(t, filepath.Join(dir, "2026-11-07-b.md"), entryText("Entry B", "2026-11-07", Added, "Feature b."))
 
-	summary, err := Run(root, "0.53.0", "2026-11-07")
+	summary, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0"))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -242,7 +251,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// A second cut has nothing left and changes nothing.
-	if _, err := Run(root, "0.54.0", "2026-11-08"); err == nil || !strings.Contains(err.Error(), "nothing to release") {
+	if _, err := Run(root, "0.54.0", "2026-11-08", tags("v0.52.0", "v0.53.0")); err == nil || !strings.Contains(err.Error(), "nothing to release") {
 		t.Fatalf("second Run error = %v, want nothing to release", err)
 	}
 	again, _ := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
@@ -261,7 +270,7 @@ func TestRunMalformedEntryChangesNothing(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "2026-11-07-good.md"), good)
 	writeFile(t, filepath.Join(dir, "2026-11-07-bad.md"), bad)
 
-	_, err := Run(root, "0.53.0", "2026-11-07")
+	_, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0"))
 	if err == nil || !strings.Contains(err.Error(), "2026-11-07-bad.md") {
 		t.Fatalf("Run error = %v, want one naming 2026-11-07-bad.md", err)
 	}
@@ -278,7 +287,118 @@ func TestRunMalformedEntryChangesNothing(t *testing.T) {
 func TestRunWithoutEntryDirectory(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "CHANGELOG.md"), readFixture(t, "CHANGELOG.in.md"))
-	if _, err := Run(root, "0.53.0", "2026-11-07"); err == nil || !strings.Contains(err.Error(), "nothing to release") {
+	if _, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0")); err == nil || !strings.Contains(err.Error(), "nothing to release") {
 		t.Fatalf("Run error = %v, want nothing to release", err)
 	}
+}
+
+// tags fakes the remote tag lookup: only the given tags exist.
+func tags(existing ...string) TagExists {
+	return func(tag string) (bool, error) { return slices.Contains(existing, tag), nil }
+}
+
+// newRunRepo writes the fixture CHANGELOG.md and one valid Fixed entry.
+func newRunRepo(t *testing.T) (root, changelog, entryPath string) {
+	t.Helper()
+	root = t.TempDir()
+	changelog = readFixture(t, "CHANGELOG.in.md")
+	writeFile(t, filepath.Join(root, "CHANGELOG.md"), changelog)
+	entryPath = filepath.Join(root, "docs", "changelog", "2026-11-07-a.md")
+	writeFile(t, entryPath, entryText("Entry A", "2026-11-07", Fixed, "Fix a."))
+	return root, changelog, entryPath
+}
+
+func assertUntouched(t *testing.T, root, changelog, entryPath string) {
+	t.Helper()
+	if got, _ := os.ReadFile(filepath.Join(root, "CHANGELOG.md")); string(got) != changelog {
+		t.Error("CHANGELOG.md was rewritten")
+	}
+	if _, err := os.Stat(entryPath); err != nil {
+		t.Errorf("entry was removed: %v", err)
+	}
+}
+
+func TestRunRefusesUntaggedPrevious(t *testing.T) {
+	root, changelog, entry := newRunRepo(t)
+	_, err := Run(root, "0.53.0", "2026-11-07", tags())
+	if err == nil || !strings.Contains(err.Error(), "v0.52.0") || !strings.Contains(err.Error(), "not tagged") {
+		t.Fatalf("Run error = %v, want one saying v0.52.0 is not tagged", err)
+	}
+	assertUntouched(t, root, changelog, entry)
+}
+
+func TestRunRefusesExistingTag(t *testing.T) {
+	root, changelog, entry := newRunRepo(t)
+	_, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0", "v0.53.0"))
+	if err == nil || !strings.Contains(err.Error(), "v0.53.0") || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("Run error = %v, want one saying v0.53.0 already exists", err)
+	}
+	assertUntouched(t, root, changelog, entry)
+}
+
+func TestRunTagLookupError(t *testing.T) {
+	root, changelog, entry := newRunRepo(t)
+	failing := func(string) (bool, error) { return false, errors.New("network down") }
+	if _, err := Run(root, "0.53.0", "2026-11-07", failing); err == nil || !strings.Contains(err.Error(), "network down") {
+		t.Fatalf("Run error = %v, want the lookup error", err)
+	}
+	assertUntouched(t, root, changelog, entry)
+}
+
+func TestRunReportsEntriesItCouldNotDelete(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	root, _, entry := newRunRepo(t)
+	dir := filepath.Dir(entry)
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	_, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0"))
+	if err == nil || !strings.Contains(err.Error(), "2026-11-07-a.md") || !strings.Contains(err.Error(), "git checkout") {
+		t.Fatalf("Run error = %v, want one naming the undeleted entry and how to undo", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
+	if !strings.Contains(string(got), "## [0.53.0] - 2026-11-07") {
+		t.Fatal("the error describes a cut CHANGELOG.md, but it was not written")
+	}
+}
+
+func TestRunRefusesSymlinks(t *testing.T) {
+	t.Run("entry directory", func(t *testing.T) {
+		root := t.TempDir()
+		changelog := readFixture(t, "CHANGELOG.in.md")
+		writeFile(t, filepath.Join(root, "CHANGELOG.md"), changelog)
+		outside := filepath.Join(t.TempDir(), "elsewhere")
+		external := filepath.Join(outside, "2026-11-07-a.md")
+		writeFile(t, external, entryText("Outside", "2026-11-07", Fixed, "Outside."))
+		if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, filepath.Join(root, "docs", "changelog")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0")); err == nil || !strings.Contains(err.Error(), "symlink") {
+			t.Fatalf("Run error = %v, want a symlink refusal", err)
+		}
+		assertUntouched(t, root, changelog, external)
+	})
+	t.Run("entry file", func(t *testing.T) {
+		root, changelog, entry := newRunRepo(t)
+		target := filepath.Join(t.TempDir(), "target.md")
+		writeFile(t, target, entryText("Outside", "2026-11-07", Fixed, "Outside."))
+		link := filepath.Join(filepath.Dir(entry), "2026-11-07-link.md")
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0")); err == nil || !strings.Contains(err.Error(), "symlink") {
+			t.Fatalf("Run error = %v, want a symlink refusal", err)
+		}
+		assertUntouched(t, root, changelog, entry)
+		if _, err := os.Stat(target); err != nil {
+			t.Fatalf("symlink target was removed: %v", err)
+		}
+	})
 }

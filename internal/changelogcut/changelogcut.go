@@ -58,9 +58,10 @@ var (
 	titleRE        = regexp.MustCompile(`^# Changelog — (.*)$`)
 	dateLineRE     = regexp.MustCompile(`^\*\*Date:\*\* (\d{4}-\d{2}-\d{2})$`)
 	sectionLineRE  = regexp.MustCompile(`^\*\*Section:\*\* (.*)$`)
-	versionRE      = regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)$`)
+	versionRE      = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`)
 	versionHeadRE  = regexp.MustCompile(`^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$`)
 	linkRefLineRE  = regexp.MustCompile(`^\[\d+\.\d+\.\d+\]: `)
+	linkRefDefRE   = regexp.MustCompile(`^\s*\[[^\]]+\]:\s*\S`)
 	sectionNameSet = func() map[Section]bool {
 		m := make(map[Section]bool, len(Sections))
 		for _, s := range Sections {
@@ -87,7 +88,10 @@ func ParseEntry(file, content string) (Entry, error) {
 		fileDate = m[1]
 	}
 
-	lines := strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n")
+	// A bare CR is a line break to a Markdown renderer, so it is one here too:
+	// otherwise a heading could hide behind it inside a bullet.
+	content = strings.ReplaceAll(strings.ReplaceAll(content, "\r\n", "\n"), "\r", "\n")
+	lines := strings.Split(content, "\n")
 	line := func(i int) string {
 		if i < len(lines) {
 			return lines[i]
@@ -131,6 +135,11 @@ func ParseEntry(file, content string) (Entry, error) {
 		if strings.HasPrefix(strings.TrimLeft(l, " \t"), "#") {
 			problems = append(problems, fmt.Sprintf(
 				"body: line %d starts with #, which would become a heading inside CHANGELOG.md", i+6))
+		}
+		if linkRefDefRE.MatchString(l) {
+			problems = append(problems, fmt.Sprintf(
+				"body: line %d is a link reference definition, which applies to all of CHANGELOG.md "+
+					"and can override a version's compare link; use an inline [text](url) link", i+6))
 		}
 	}
 
@@ -326,19 +335,38 @@ func entryFiles(dir string) ([]string, error) {
 		if de.IsDir() || name == "README.md" || !strings.HasSuffix(name, ".md") {
 			continue
 		}
+		if de.Type()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("%s is a symlink; entries must be regular files", filepath.Join(dir, name))
+		}
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	return names, nil
 }
 
+// TagExists reports whether a git tag exists on the remote.
+type TagExists func(tag string) (bool, error)
+
 // Run cuts the release in the repository at root: it folds every entry under
 // docs/changelog/ (README.md and non-.md files excepted) and any bullets
 // under [Unreleased] into CHANGELOG.md, deletes the folded entry files, and
-// returns a summary for the release PR body. On any error it writes and
-// deletes nothing.
-func Run(root, version, date string) (string, error) {
+// returns a summary for the release PR body.
+//
+// It refuses to cut when the target tag already exists or the previous
+// version is not tagged yet: a new heading over an untagged one would hide
+// that release's notes from the release automation, which only reads the
+// newest heading. Every check runs before anything is written. If an entry
+// cannot be deleted after CHANGELOG.md is written, the error says so.
+func Run(root, version, date string, tagExists TagExists) (string, error) {
 	path := filepath.Join(root, "CHANGELOG.md")
+	dir := filepath.Join(root, EntryDir)
+	for _, p := range []string{path, dir} {
+		info, err := os.Lstat(p)
+		if err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("%s is a symlink; the cut only works on regular files in the repository", p)
+		}
+	}
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -348,7 +376,6 @@ func Run(root, version, date string) (string, error) {
 		return "", err
 	}
 
-	dir := filepath.Join(root, EntryDir)
 	names, err := entryFiles(dir)
 	if err != nil {
 		return "", err
@@ -381,15 +408,58 @@ func Run(root, version, date string) (string, error) {
 		return "", err
 	}
 
-	if err := os.WriteFile(path, []byte(out), info.Mode().Perm()); err != nil {
+	if exists, err := tagExists("v" + version); err != nil {
+		return "", fmt.Errorf("checking tag v%s: %w", version, err)
+	} else if exists {
+		return "", fmt.Errorf("tag v%s already exists: pick the next version", version)
+	}
+	if exists, err := tagExists("v" + u.prev); err != nil {
+		return "", fmt.Errorf("checking tag v%s: %w", u.prev, err)
+	} else if !exists {
+		return "", fmt.Errorf("%s is not tagged yet: release it (/operator release) before cutting %s, "+
+			"or its notes stop being the ones the release automation reads", "v"+u.prev, version)
+	}
+
+	if err := writeAtomic(path, []byte(out), info.Mode().Perm()); err != nil {
 		return "", err
 	}
+	var undeleted []string
+	var removeErrs []error
 	for _, e := range entries {
 		if err := os.Remove(filepath.Join(dir, e.File)); err != nil {
-			return "", err
+			undeleted = append(undeleted, e.File)
+			removeErrs = append(removeErrs, err)
 		}
 	}
+	if len(undeleted) > 0 {
+		return "", fmt.Errorf("CHANGELOG.md now holds %s, but these entries could not be deleted: %s (%w). "+
+			"Delete them by hand, or undo the cut with `git checkout -- CHANGELOG.md %s`",
+			version, strings.Join(undeleted, ", "), errors.Join(removeErrs...), EntryDir)
+	}
 	return summary(version, date, entries, u.bullets), nil
+}
+
+// writeAtomic replaces path through a temporary file in the same directory,
+// so a failed write never leaves a truncated CHANGELOG.md.
+func writeAtomic(path string, data []byte, perm os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer func() { _ = os.Remove(name) }()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(name, path)
 }
 
 func summary(version, date string, entries []Entry, bullets map[Section]string) string {

@@ -23,6 +23,8 @@ not edit it, not even `## [Unreleased]`.
 
 One entry is one bullet. A PR with changes in two sections adds two entries.
 `go test ./internal/changelogcut/` checks every entry here against this grammar.
+Link reference definitions (`[text]: url` lines) are not allowed either: in
+`CHANGELOG.md` they apply to the whole file. Use inline `[text](url)` links.
 
 ```md
 # Changelog — list_specs returns the last page
@@ -44,7 +46,10 @@ lint, CI or test-only work, a dependency bump with no behavior change.
 1. On a branch from an up-to-date `main`: `make changelog-cut RELEASE=X.Y.Z`.
    It writes the version section and its link line, deletes the folded entries,
    and prints a summary. Bullets that a PR still added under `## [Unreleased]`
-   go into the same section, so nothing merged is dropped.
+   go into the same section, so nothing merged is dropped. It asks `origin` for
+   tags and refuses when `vX.Y.Z` already exists, or when the previous version
+   is not tagged yet: release that one first, or its notes would stop being the
+   ones the release automation reads.
 2. `go test ./...`, then open a PR titled `release: X.Y.Z` with the summary in
    its body.
 3. After it merges, `/operator release tiden-mcp` tags `vX.Y.Z`.

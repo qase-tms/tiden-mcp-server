@@ -4,9 +4,12 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/qase-tms/tiden-mcp-server/internal/changelogcut"
@@ -21,10 +24,22 @@ func main() {
 		os.Exit(2)
 	}
 
-	summary, err := changelogcut.Run(".", *version, *date)
+	summary, err := changelogcut.Run(".", *version, *date, remoteTagExists)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "changelog-cut:", err)
 		os.Exit(1)
 	}
 	fmt.Print(summary)
+}
+
+// remoteTagExists asks origin, not the local clone, whose tags can be stale.
+func remoteTagExists(tag string) (bool, error) {
+	var stderr bytes.Buffer
+	cmd := exec.Command("git", "ls-remote", "--tags", "origin", "refs/tags/"+tag)
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("git ls-remote origin: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return strings.TrimSpace(string(out)) != "", nil
 }
