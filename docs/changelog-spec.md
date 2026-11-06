@@ -8,7 +8,9 @@ deviates from it breaks version derivation or renders wrong release notes.
 
 1. The file starts with a `# Changelog` title and an intro paragraph.
 2. A `## [Unreleased]` heading is always present and is the first version
-   heading in the file.
+   heading in the file. Feature PRs leave its section empty: pending changes
+   are entries under [`changelog/`](changelog/README.md) until the release
+   cut folds them into a version section.
 3. Every released or pending version has a heading of exactly:
 
    ```
@@ -34,7 +36,8 @@ deviates from it breaks version derivation or renders wrong release notes.
 ## Release-flow invariant
 
 The git tag for a release is `v` + the heading version (`vX.Y.Z`), and the
-version section is cut in a release PR **before** the tag is pushed. Only
+version section is cut in a release PR, with `make changelog-cut
+RELEASE=X.Y.Z`, **before** the tag is pushed. Only
 the newest version heading — the first below `## [Unreleased]` — can be
 pending: if its `vX.Y.Z` tag does not exist yet, that is *the* pending
 release the automation will tag; if its tag exists, there is nothing to
