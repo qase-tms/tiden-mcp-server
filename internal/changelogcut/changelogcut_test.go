@@ -72,6 +72,8 @@ func TestParseEntryRejects(t *testing.T) {
 			validEntry + "\n[0.53.0]: https://example.test/wrong\n", []string{"reference"}},
 		{"indented link reference definition", "2026-11-07-x.md",
 			validEntry + "\n  [docs]: https://example.test/\n", []string{"reference"}},
+		{"link reference definition with the URL on the next line", "2026-11-07-x.md",
+			validEntry + "\n[0.53.0]:\n  https://example.test/wrong\n", []string{"reference"}},
 		{"every rule reported", "2026-11-07-x.md",
 			strings.SplitAfter(strings.Replace(validEntry, "**Section:** Fixed", "**Section:** Improved", 1),
 				"**Section:** Improved\n")[0],
@@ -168,6 +170,9 @@ func TestCutRejects(t *testing.T) {
 		{"older version", in, goldenEntries(), "0.51.9", "2026-11-07", "not newer than 0.52.0"},
 		{"v prefix", in, goldenEntries(), "v0.53.0", "2026-11-07", "X.Y.Z"},
 		{"leading zero", in, goldenEntries(), "0.053.0", "2026-11-07", "X.Y.Z"},
+		{"older than a legacy leading-zero heading",
+			strings.Replace(in, "## [0.52.0] - 2026-11-06", "## [0.053.0] - 2026-11-06", 1),
+			goldenEntries(), "0.52.1", "2026-11-07", "not newer than 0.053.0"},
 		{"bad date", in, goldenEntries(), "0.53.0", "07.11.2026", "YYYY-MM-DD"},
 		{"text outside a subsection",
 			strings.Replace(in, "## [Unreleased]\n\n", "## [Unreleased]\n\n- stray bullet\n\n", 1),
@@ -345,24 +350,39 @@ func TestRunTagLookupError(t *testing.T) {
 	assertUntouched(t, root, changelog, entry)
 }
 
-func TestRunReportsEntriesItCouldNotDelete(t *testing.T) {
+func TestRunThatCannotMoveEntriesChangesNothing(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores directory permissions")
 	}
-	root, _, entry := newRunRepo(t)
+	root, changelog, entry := newRunRepo(t)
+	untracked := filepath.Join(filepath.Dir(entry), "2026-11-07-b.md")
+	writeFile(t, untracked, entryText("Entry B", "2026-11-07", Added, "Feature b."))
 	dir := filepath.Dir(entry)
 	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	_, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0"))
-	if err == nil || !strings.Contains(err.Error(), "2026-11-07-a.md") || !strings.Contains(err.Error(), "git checkout") {
-		t.Fatalf("Run error = %v, want one naming the undeleted entry and how to undo", err)
+	if _, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0")); err == nil {
+		t.Fatal("Run succeeded in a read-only entry directory")
 	}
-	got, _ := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
-	if !strings.Contains(string(got), "## [0.53.0] - 2026-11-07") {
-		t.Fatal("the error describes a cut CHANGELOG.md, but it was not written")
+	assertUntouched(t, root, changelog, entry)
+	if _, err := os.Stat(untracked); err != nil {
+		t.Fatalf("second entry was removed: %v", err)
+	}
+}
+
+func TestRunLeavesNoStagingDirectory(t *testing.T) {
+	root, _, entry := newRunRepo(t)
+	if _, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0")); err != nil {
+		t.Fatal(err)
+	}
+	des, err := os.ReadDir(filepath.Dir(entry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(des) != 0 {
+		t.Fatalf("entry directory still holds %v after the cut", des)
 	}
 }
 
@@ -385,6 +405,21 @@ func TestRunRefusesSymlinks(t *testing.T) {
 		}
 		assertUntouched(t, root, changelog, external)
 	})
+	t.Run("ancestor directory", func(t *testing.T) {
+		root := t.TempDir()
+		changelog := readFixture(t, "CHANGELOG.in.md")
+		writeFile(t, filepath.Join(root, "CHANGELOG.md"), changelog)
+		outside := filepath.Join(t.TempDir(), "docs")
+		external := filepath.Join(outside, "changelog", "2026-11-07-a.md")
+		writeFile(t, external, entryText("Outside", "2026-11-07", Fixed, "Outside."))
+		if err := os.Symlink(outside, filepath.Join(root, "docs")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Run(root, "0.53.0", "2026-11-07", tags("v0.52.0")); err == nil || !strings.Contains(err.Error(), "outside") {
+			t.Fatalf("Run error = %v, want a refusal of an entry directory outside the repository", err)
+		}
+		assertUntouched(t, root, changelog, external)
+	})
 	t.Run("entry file", func(t *testing.T) {
 		root, changelog, entry := newRunRepo(t)
 		target := filepath.Join(t.TempDir(), "target.md")
@@ -401,4 +436,24 @@ func TestRunRefusesSymlinks(t *testing.T) {
 			t.Fatalf("symlink target was removed: %v", err)
 		}
 	})
+}
+
+func TestLsRemoteHasTag(t *testing.T) {
+	tests := []struct {
+		name, output string
+		want         bool
+	}{
+		{"exact", "1111\trefs/tags/v0.52.0\n", true},
+		{"annotated", "1111\trefs/tags/v0.52.0\n2222\trefs/tags/v0.52.0^{}\n", true},
+		{"suffix match only", "1111\trefs/tags/archive/refs/tags/v0.52.0\n", false},
+		{"other tag", "1111\trefs/tags/v0.52.01\n", false},
+		{"empty", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := LsRemoteHasTag(tt.output, "v0.52.0"); got != tt.want {
+				t.Fatalf("LsRemoteHasTag(%q) = %v, want %v", tt.output, got, tt.want)
+			}
+		})
+	}
 }

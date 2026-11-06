@@ -41,5 +41,5 @@ func remoteTagExists(tag string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("git ls-remote origin: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
-	return strings.TrimSpace(string(out)) != "", nil
+	return changelogcut.LsRemoteHasTag(string(out), tag), nil
 }

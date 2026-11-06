@@ -61,7 +61,8 @@ var (
 	versionRE      = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`)
 	versionHeadRE  = regexp.MustCompile(`^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$`)
 	linkRefLineRE  = regexp.MustCompile(`^\[\d+\.\d+\.\d+\]: `)
-	linkRefDefRE   = regexp.MustCompile(`^\s*\[[^\]]+\]:\s*\S`)
+	linkRefDefRE   = regexp.MustCompile(`^\s*\[[^\]]+\]:(\s|$)`)
+	anyVersionRE   = regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)$`)
 	sectionNameSet = func() map[Section]bool {
 		m := make(map[Section]bool, len(Sections))
 		for _, s := range Sections {
@@ -211,8 +212,18 @@ func parseUnreleased(lines []string) (unreleased, error) {
 	return u, nil
 }
 
+// parseVersion parses a version as the cut writes it: X.Y.Z, no leading zeros.
 func parseVersion(v string) ([3]int, bool) {
-	m := versionRE.FindStringSubmatch(v)
+	if !versionRE.MatchString(v) {
+		return [3]int{}, false
+	}
+	return parseNumbers(v)
+}
+
+// parseNumbers parses any X.Y.Z, including the leading zeros an older
+// heading may carry, so comparisons against it stay numeric.
+func parseNumbers(v string) ([3]int, bool) {
+	m := anyVersionRE.FindStringSubmatch(v)
 	if m == nil {
 		return [3]int{}, false
 	}
@@ -273,7 +284,10 @@ func Cut(changelog string, entries []Entry, version, date, repoURL string) (stri
 	if err != nil {
 		return "", err
 	}
-	prev, _ := parseVersion(u.prev)
+	prev, ok := parseNumbers(u.prev)
+	if !ok {
+		return "", fmt.Errorf("CHANGELOG.md: cannot read the newest version %q", u.prev)
+	}
 	if !newer(want, prev) {
 		return "", fmt.Errorf("version %s is not newer than %s, the newest version in CHANGELOG.md", version, u.prev)
 	}
@@ -367,6 +381,10 @@ func Run(root, version, date string, tagExists TagExists) (string, error) {
 		}
 	}
 
+	if err := insideRoot(root, dir); err != nil {
+		return "", err
+	}
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -420,23 +438,70 @@ func Run(root, version, date string, tagExists TagExists) (string, error) {
 			"or its notes stop being the ones the release automation reads", "v"+u.prev, version)
 	}
 
-	if err := writeAtomic(path, []byte(out), info.Mode().Perm()); err != nil {
-		return "", err
+	// Move the folded entries aside first: if any move fails, the others go
+	// back and nothing is written, so a failed cut never needs a git undo
+	// (which would also lose an entry that was never committed).
+	staging, err := os.MkdirTemp(dir, ".cut-")
+	if err != nil {
+		return "", fmt.Errorf("cannot stage the entries for removal: %w", err)
 	}
-	var undeleted []string
-	var removeErrs []error
-	for _, e := range entries {
-		if err := os.Remove(filepath.Join(dir, e.File)); err != nil {
-			undeleted = append(undeleted, e.File)
-			removeErrs = append(removeErrs, err)
+	var moved []string
+	restore := func() {
+		for _, name := range moved {
+			_ = os.Rename(filepath.Join(staging, name), filepath.Join(dir, name))
 		}
+		_ = os.Remove(staging)
 	}
-	if len(undeleted) > 0 {
-		return "", fmt.Errorf("CHANGELOG.md now holds %s, but these entries could not be deleted: %s (%w). "+
-			"Delete them by hand, or undo the cut with `git checkout -- CHANGELOG.md %s`",
-			version, strings.Join(undeleted, ", "), errors.Join(removeErrs...), EntryDir)
+	for _, e := range entries {
+		if err := os.Rename(filepath.Join(dir, e.File), filepath.Join(staging, e.File)); err != nil {
+			restore()
+			return "", fmt.Errorf("cannot stage %s for removal, nothing changed: %w", e.File, err)
+		}
+		moved = append(moved, e.File)
+	}
+	if err := writeAtomic(path, []byte(out), info.Mode().Perm()); err != nil {
+		restore()
+		return "", fmt.Errorf("writing CHANGELOG.md, nothing changed: %w", err)
+	}
+	if err := os.RemoveAll(staging); err != nil {
+		return "", fmt.Errorf("CHANGELOG.md now holds %s, but the folded entries are still in %s: delete that directory (%w)",
+			version, staging, err)
 	}
 	return summary(version, date, entries, u.bullets), nil
+}
+
+// insideRoot refuses an entry directory that resolves outside the
+// repository through a symlinked ancestor.
+func insideRoot(root, dir string) error {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return err
+	}
+	realDir, err := filepath.EvalSymlinks(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if rel, err := filepath.Rel(realRoot, realDir); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%s resolves outside the repository (%s): the cut only works on files in the repository", dir, realDir)
+	}
+	return nil
+}
+
+// LsRemoteHasTag reports whether `git ls-remote --tags` output lists exactly
+// refs/tags/<tag>. Git matches the pattern by suffix, so the output can also
+// list a tag like refs/tags/archive/refs/tags/<tag>.
+func LsRemoteHasTag(output, tag string) bool {
+	want := "refs/tags/" + tag
+	for _, line := range strings.Split(output, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 && (fields[1] == want || fields[1] == want+"^{}") {
+			return true
+		}
+	}
+	return false
 }
 
 // writeAtomic replaces path through a temporary file in the same directory,
