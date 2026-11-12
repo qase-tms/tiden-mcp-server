@@ -1,0 +1,28 @@
+internal/model/gate.go
+  s_62663bf82a9ebf::t_cf75d7e9f5c87c 20-77,97-101
+internal/mcpserver/server_test.go
+  s_62663bf82a9ebf::t_5e0bed76d0ab96 542-569
+  s_62663bf82a9ebf::t_d75f012ddf5070 523-541
+CHANGELOG.md
+  s_62663bf82a9ebf::t_418ed20a031787 10-20
+internal/mcpserver/gate_tools.go
+  s_62663bf82a9ebf::t_cf75d7e9f5c87c 34,58
+README.md
+  s_62663bf82a9ebf::t_418ed20a031787 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2cc25f49ee3019c0dd1aac006b8c6ebc33a4a693",
+  "prompts": {},
+  "sessions": {
+    "s_62663bf82a9ebf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee7591e7-640f-4373-b116-2bf9bf82ebac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+internal/mcpserver/gate_tools.go
+  s_c919d6fc8c17e4::t_368b36d3c64720 138
+internal/mcpserver/traceability_view.go
+  s_c919d6fc8c17e4::t_452849be646663 187-190,217-220
+  s_c919d6fc8c17e4::t_f53196eab5479b 46-47
+internal/model/lookup_plan.go
+  s_c919d6fc8c17e4::t_452849be646663 47-54
+internal/mcpserver/lookup_tools_test.go
+  s_c919d6fc8c17e4::t_24e1be2ec1b818 8,85-134
+  s_c919d6fc8c17e4::t_1d37d1a620960a 135-136
+internal/model/gate.go
+  s_c919d6fc8c17e4::t_452849be646663 128-138,231-241,262-272
+internal/mcpserver/traceability_view_test.go
+  s_c919d6fc8c17e4::t_f53196eab5479b 1-56
+internal/model/via_children_test.go
+  s_c919d6fc8c17e4::t_f53196eab5479b 1-61
+CHANGELOG.md
+  s_c919d6fc8c17e4::t_ad10659465ac1b 10-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "868c22aa3730714ea9b06e611d89aa52fb165955",
+  "prompts": {},
+  "sessions": {
+    "s_c919d6fc8c17e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f0c299a-3aed-4fde-bbdd-68644d65a81e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

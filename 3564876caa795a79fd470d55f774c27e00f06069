@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_441c5448e7d34a::t_80123d688e272d 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3564876caa795a79fd470d55f774c27e00f06069",
+  "prompts": {},
+  "sessions": {
+    "s_441c5448e7d34a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fe75e2b-ee7f-4025-9c1a-4c930a0e803a",
+        "model": "unknown"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
