@@ -26,15 +26,19 @@ type LookupMatch struct {
 	Roles          []string       `json:"roles"`
 	Signals        []string       `json:"signals,omitempty"`
 	MatchedAnchors []LookupAnchor `json:"matchedAnchors,omitempty"`
+	// Evidence says why the spec is related, strongest first. Absent on a
+	// server that predates it.
+	Evidence []Evidence `json:"evidence,omitempty"`
 }
 
 type LookupRequirement struct {
-	ID          string         `json:"id"`
-	CanonicalID string         `json:"canonicalId"`
-	SeqNum      int            `json:"seqNum"`
-	Title       string         `json:"title"`
-	Description string         `json:"description"`
-	Anchors     []LookupAnchor `json:"anchors,omitempty"`
+	ID          string `json:"id"`
+	CanonicalID string `json:"canonicalId"`
+	SeqNum      int    `json:"seqNum"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	// Anchors may carry line ranges (ResultAnchor), unlike the input anchors.
+	Anchors []ResultAnchor `json:"anchors,omitempty"`
 }
 
 type LookupItemResult struct {

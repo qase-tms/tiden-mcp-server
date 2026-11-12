@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `lookup_context` matches carry `evidence`: why the spec is related to the
+  item, strongest first, at most one entry per kind (`anchor`, `seed`,
+  `co_anchored`, `ancestor`), each with the facts the server reports (the
+  anchor and its lines, the seed rank and signals, the spec it shares a file
+  with, the child it is the parent of). Anchors in the spec dictionary and in
+  evidence carry `lineStart` / `lineEnd` when the server reports a line range.
+  The tool input is unchanged: anchors stay `{repository, path}`. A server that
+  sends no evidence returns the result as before.
+
 ## [0.16.0] - 2026-11-05
 
 ### Added
