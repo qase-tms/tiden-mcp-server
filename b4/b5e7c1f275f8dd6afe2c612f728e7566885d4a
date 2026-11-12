@@ -1,0 +1,28 @@
+internal/mcpserver/lookup_tools.go
+  s_fff3768716164b::t_3d19452a6c64c7 23
+CHANGELOG.md
+  s_fff3768716164b::t_4d5124f4a08c64 10-20
+internal/model/lookup_plan.go
+  s_fff3768716164b::t_a213630a39636e 29-31,39-41
+  s_fff3768716164b::t_3d19452a6c64c7 35-38
+internal/model/evidence.go
+  s_fff3768716164b::t_a213630a39636e 1-25
+internal/mcpserver/lookup_tools_test.go
+  s_fff3768716164b::t_4d5124f4a08c64 137-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4b5e7c1f275f8dd6afe2c612f728e7566885d4a",
+  "prompts": {},
+  "sessions": {
+    "s_fff3768716164b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "375dd38a-d297-41a0-8c7a-9921663dfc57",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
