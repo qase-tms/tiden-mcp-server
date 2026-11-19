@@ -134,3 +134,79 @@ func TestLookupContextCarriesViaChildrenIDs(t *testing.T) {
 		})
 	}
 }
+
+// evidence and anchor line ranges pass through lookup_context from the
+// server's raw response; the tool's input schema stays {repository, path}.
+func TestLookupContextPassesEvidenceAndAnchorLines(t *testing.T) {
+	ctx := context.Background()
+	const wire = `{"version":1,"productId":"product","branchId":"main","retrievalStatus":"complete","readAt":"2026-11-12T00:00:00Z",
+"requirements":[{"id":"r1","canonicalId":"r1","seqNum":2142,"title":"Lookup","description":"d","anchors":[{"repository":"github.com/org/app","path":"internal/lookup.go","lineStart":178,"lineEnd":217}]}],
+"items":[{"id":"P1","question":"q","status":"ok","candidateRequirementIds":["r1"],"coverageGapIds":[],"diagnostics":[],"truncated":false,"omitted":0,"limitReached":false,
+"matches":[{"requirementId":"r1","featureId":"r1","roles":["seed"],"evidence":[
+{"kind":"anchor","signals":["anchor"],"anchor":{"repository":"github.com/org/app","path":"internal/lookup.go","lineStart":178,"lineEnd":217}},
+{"kind":"seed","seedRank":2,"signals":["vector","fts"]},
+{"kind":"co_anchored","viaRequirementId":"r2","viaSeqNum":2143,"anchor":{"repository":"github.com/org/app","path":"internal/lookup.go","lineStart":120,"lineEnd":180},"confidence":0.25},
+{"kind":"ancestor","viaRequirementId":"r3","viaSeqNum":709,"hops":1}]}]}]}`
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(wire))
+	}))
+	defer backend.Close()
+	srv := mcpserver.New(api.New(backend.URL, "token"), "")
+	st, ct := mcp.NewInMemoryTransports()
+	go func() { _ = srv.Run(ctx, st) }()
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, nil).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = session.Close() }()
+
+	for tool, err := range session.Tools(ctx, nil) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tool.Name != "lookup_context" {
+			continue
+		}
+		in, _ := json.Marshal(tool.InputSchema)
+		if strings.Contains(string(in), "lineStart") || strings.Contains(string(in), "lineEnd") || strings.Contains(string(in), "evidence") {
+			t.Fatalf("input schema must stay {repository, path}: %s", in)
+		}
+		if !strings.Contains(tool.Description, "evidence") || !strings.Contains(tool.Description, "line ranges") {
+			t.Fatalf("description must mention evidence and line ranges: %s", tool.Description)
+		}
+	}
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "lookup_context", Arguments: map[string]any{"product_id": "product", "items": []map[string]any{{"id": "P1", "question": "q"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("tool error: %+v", result.Content)
+	}
+	raw, _ := json.Marshal(result.StructuredContent)
+	var decoded model.LookupBatchResult
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	ev := decoded.Items[0].Matches[0].Evidence
+	if len(ev) != 4 || ev[0].Kind != "anchor" || ev[0].Anchor == nil || ev[0].Anchor.LineStart != 178 || ev[0].Anchor.LineEnd != 217 {
+		t.Fatalf("anchor evidence lost: %s", raw)
+	}
+	if ev[1].SeedRank != 2 || len(ev[1].Signals) != 2 {
+		t.Fatalf("seed evidence lost: %s", raw)
+	}
+	if ev[2].ViaSeqNum != 2143 || ev[2].Confidence != 0.25 || ev[2].Anchor.LineStart != 120 {
+		t.Fatalf("co_anchored evidence lost: %s", raw)
+	}
+	if ev[3].ViaSeqNum != 709 || ev[3].Hops != 1 {
+		t.Fatalf("ancestor evidence lost: %s", raw)
+	}
+	a := decoded.Requirements[0].Anchors[0]
+	if a.LineStart != 178 || a.LineEnd != 217 {
+		t.Fatalf("dictionary anchor lines lost: %s", raw)
+	}
+	text := result.Content[0].(*mcp.TextContent).Text
+	if !strings.Contains(text, `"lineStart":178`) || !strings.Contains(text, `"seedRank":2`) {
+		t.Fatalf("text content lacks evidence: %s", text)
+	}
+}
