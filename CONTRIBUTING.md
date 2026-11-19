@@ -11,4 +11,4 @@ Before opening a pull request:
 
 The API contract mirrors the Tiden public REST API. Keep request and response models hand-written and limited to the MCP tool surface.
 
-`CHANGELOG.md` follows the grammar pinned in [`docs/changelog-spec.md`](docs/changelog-spec.md) — the release automation parses it, so entries must conform exactly.
+Changelog: record each user-visible change as `docs/changelog/YYYY-MM-DD-<slug>.md` per [`docs/changelog/README.md`](docs/changelog/README.md). Do not edit `CHANGELOG.md` in a feature PR, not even `## [Unreleased]`: only a `release: X.Y.Z` PR changes the file, through `make changelog-cut RELEASE=X.Y.Z`. The file's grammar, which the release automation parses, is pinned in [`docs/changelog-spec.md`](docs/changelog-spec.md).
