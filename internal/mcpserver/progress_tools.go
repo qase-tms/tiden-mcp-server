@@ -57,11 +57,15 @@ func registerSessionProgress(srv *mcp.Server, client *api.Client) {
 		if fields == nil {
 			return toolError(fmt.Errorf("session progress returned no response object"))
 		}
-		sessionArg := "'" + strings.ReplaceAll(args.SessionID, "'", "'\\''") + "'"
+		closeCheck := "For close conditions on the current diff, run `tiden intent progress --format text` in the session checkout. " +
+			"Pass the session UUID with `--session` and reuse the original --changes ranges, if used."
+		if uuidPattern.MatchString(args.SessionID) {
+			closeCheck = "For close conditions on the current diff, run `tiden intent progress --session=" + strings.ToLower(args.SessionID) +
+				" --format text` in the session checkout with its original --changes ranges, if used."
+		}
 		guidance, err := json.Marshal(sessionProgressGuidance{
-			CoverageScope: "The summary and ready flag describe the specs assessed by the server.",
-			LocalCloseCheck: "For close conditions on the current diff, run `tiden intent progress --session=" + sessionArg +
-				" --format text` in the session checkout with its original --changes ranges, if used.",
+			CoverageScope:   "The summary and ready flag describe the specs assessed by the server.",
+			LocalCloseCheck: closeCheck,
 		})
 		if err != nil {
 			return toolError(err)

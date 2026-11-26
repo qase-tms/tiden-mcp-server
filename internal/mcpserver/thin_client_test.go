@@ -282,19 +282,24 @@ func TestSessionProgressCompactTestsFlag(t *testing.T) {
 		}
 	}
 	const assessment = `,"assessment":{"requestedUniqueIds":2,"resolvedSpecs":1,"assessedSpecs":1,"unresolvedIds":1,"excludedAdopted":1},"freshnessApplied":false`
+	const sessionUUID = "5ACBC177-62DE-4FA3-AA53-90E0AA39BDB1"
+	const unvalidatedID = "s1' & unvalidated"
 	for _, tc := range []struct {
 		name       string
 		allTests   bool
 		assessment string
+		sessionID  string
+		command    string
 	}{
-		{name: "old server, compact"},
-		{name: "old server, all tests", allTests: true},
-		{name: "new server, compact", assessment: assessment},
-		{name: "new server, all tests", allTests: true, assessment: assessment},
+		{name: "old server, compact", sessionID: sessionUUID},
+		{name: "old server, all tests", allTests: true, sessionID: sessionUUID},
+		{name: "new server, compact", assessment: assessment, sessionID: sessionUUID},
+		{name: "new server, all tests", allTests: true, assessment: assessment, sessionID: sessionUUID},
+		{name: "compatible server returning data for an unvalidated ID", sessionID: unvalidatedID, command: "`tiden intent progress --format text`"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var got map[string]any
-			args := map[string]any{"product_id": "p1", "session_id": "s1", "spec_ids": []string{"r1", "stale"}, "intent_branch": "intent/x"}
+			args := map[string]any{"product_id": "p1", "session_id": tc.sessionID, "spec_ids": []string{"r1", "stale"}, "intent_branch": "intent/x"}
 			if tc.allTests {
 				args["all_tests"] = true
 			}
@@ -327,10 +332,15 @@ func TestSessionProgressCompactTestsFlag(t *testing.T) {
 				t.Errorf("informational row lost: %v", rows)
 			}
 			guidance, ok := body["mcpGuidance"].(map[string]any)
+			closeCheck := fmt.Sprint(guidance["localCloseCheck"])
+			command := tc.command
+			if command == "" {
+				command = "`tiden intent progress --session=5acbc177-62de-4fa3-aa53-90e0aa39bdb1 --format text`"
+			}
 			if !ok || guidance["localGitEvidenceProvided"] != false ||
 				!strings.Contains(fmt.Sprint(guidance["coverageScope"]), "assessed by the server") ||
-				!strings.Contains(fmt.Sprint(guidance["localCloseCheck"]), "tiden intent progress --session='s1' --format text") ||
-				!strings.Contains(fmt.Sprint(guidance["localCloseCheck"]), "original --changes ranges") {
+				!strings.Contains(closeCheck, command) || !strings.Contains(closeCheck, "original --changes ranges") ||
+				strings.Contains(closeCheck, unvalidatedID) {
 				t.Errorf("missing close guidance: %v", guidance)
 			}
 			if tc.assessment == "" {
