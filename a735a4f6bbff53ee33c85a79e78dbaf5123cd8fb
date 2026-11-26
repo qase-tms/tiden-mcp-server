@@ -1,0 +1,31 @@
+CHANGELOG.md
+  s_fa70f77c83c7a0::t_2bd51c04d8dbbb 10-26
+internal/api/test.go
+  s_fa70f77c83c7a0::t_2bd51c04d8dbbb 140-142,145-163,165-169
+internal/mcpserver/tools.go
+  s_fa70f77c83c7a0::t_2bd51c04d8dbbb 411-412
+internal/api/branch.go
+  s_fa70f77c83c7a0::t_2bd51c04d8dbbb 82-93
+internal/mcpserver/link_spec_test.go
+  s_fa70f77c83c7a0::t_2bd51c04d8dbbb 1-144
+README.md
+  s_fa70f77c83c7a0::t_2bd51c04d8dbbb 124,137
+internal/mcpserver/gate_tools.go
+  s_fa70f77c83c7a0::t_2bd51c04d8dbbb 308-311,316-319,327-328,331-338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a735a4f6bbff53ee33c85a79e78dbaf5123cd8fb",
+  "prompts": {},
+  "sessions": {
+    "s_fa70f77c83c7a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2f23ed0-00de-4644-a455-ec79ec2049a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

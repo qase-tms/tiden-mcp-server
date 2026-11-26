@@ -1,0 +1,32 @@
+internal/model/gate.go
+  s_85cfdbd3ff1b43::t_337ae3be785472 34-41,48-90
+  s_fa84a3ae4562af::t_0c29555bc1badb 91
+CHANGELOG.md
+  s_85cfdbd3ff1b43::t_9f9214e146fc91 12-19
+internal/api/gate_test.go
+  s_85cfdbd3ff1b43::t_0af1591d91ebf5 226-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "535c6a52af424b65bce98fae2d2d1cde15de9984",
+  "prompts": {},
+  "sessions": {
+    "s_85cfdbd3ff1b43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c5d7fb1-ed3b-4eb6-900d-c412cbcffad3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    },
+    "s_fa84a3ae4562af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66d52843-b9c7-42eb-b937-64a23c4c0faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

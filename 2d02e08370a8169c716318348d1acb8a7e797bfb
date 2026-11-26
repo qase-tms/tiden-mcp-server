@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_167fffd223cbe1::t_2a98830ae100c7 10-11,290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d02e08370a8169c716318348d1acb8a7e797bfb",
+  "prompts": {},
+  "sessions": {
+    "s_167fffd223cbe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e135bf6c-9a07-4bc4-8606-5e4560437095",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

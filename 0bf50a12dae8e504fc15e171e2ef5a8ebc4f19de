@@ -1,0 +1,27 @@
+internal/resolve/resolve.go
+  s_f4b2e66bee9b7b::t_6a9f06e4b71e3d 349-352,354,360,371-372,380-387,393-397
+  s_f4b2e66bee9b7b::t_49ce7bfac6dcf6 138,142-144,146,150,161
+  s_f4b2e66bee9b7b::t_6e58ee95ca987d 212-218,223,225-226,229,236-239,243-246,248,258-265
+  s_f4b2e66bee9b7b::t_abb21300094141 274-277,309
+internal/resolve/resolve_test.go
+  s_f4b2e66bee9b7b::t_9e8640a0090815 116-137,141-155
+  s_f4b2e66bee9b7b::t_0effe075e049aa 138-140
+README.md
+  s_f4b2e66bee9b7b::t_67770f14d7e859 58-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0bf50a12dae8e504fc15e171e2ef5a8ebc4f19de",
+  "prompts": {},
+  "sessions": {
+    "s_f4b2e66bee9b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b21f83d5-1902-474f-b9fc-0bee8f666960",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Vadim Shashin <git@enapiuz.com>"
+    }
+  }
+}

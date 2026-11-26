@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_cdd697df2dafaf::t_db67459b451c49 10-11,396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ecb89736a924c6996935700ffa6c18951900241",
+  "prompts": {},
+  "sessions": {
+    "s_cdd697df2dafaf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e99d06-3f60-4057-9992-5c8d91555c61",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "prostoandrei <avaganov@qase.io>"
+    }
+  }
+}

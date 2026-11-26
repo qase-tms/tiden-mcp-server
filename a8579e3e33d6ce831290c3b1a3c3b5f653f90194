@@ -1,0 +1,31 @@
+internal/api/acceptance_test.go
+  s_a1ec22d1784cd7::t_e18131dda11383 84
+  s_a1ec22d1784cd7::t_6b5a1a7d6477f7 13
+internal/api/acceptance.go
+  s_a1ec22d1784cd7::t_53dfc4fa74a0a1 56-57
+  s_a1ec22d1784cd7::t_6b5a1a7d6477f7 7,64
+internal/api/gate_test.go
+  s_a1ec22d1784cd7::t_585f0821e0abe8 116,131
+internal/mcpserver/server_test.go
+  s_a1ec22d1784cd7::t_261b21f1964b50 157
+  s_a1ec22d1784cd7::t_18bd2857e5f8d5 199
+internal/model/types.go
+  s_a1ec22d1784cd7::t_6b5a1a7d6477f7 37
+  s_a1ec22d1784cd7::t_09f7c49a21b9da 35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "a8579e3e33d6ce831290c3b1a3c3b5f653f90194",
+  "prompts": {},
+  "sessions": {
+    "s_a1ec22d1784cd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2db362b1-5918-43fc-af72-a72eda9c210e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
