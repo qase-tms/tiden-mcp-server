@@ -6,8 +6,7 @@ import (
 )
 
 // SessionProgressQuery parameterizes GetSessionProgress. RequirementIDs is the
-// client-provided slice (the session record's retrieved ids + the draft id) -
-// the server holds no session table, so the slice always rides in the request.
+// client-provided selection. The server resolves these IDs in its branch view.
 type SessionProgressQuery struct {
 	SessionID      string
 	RequirementIDs []string

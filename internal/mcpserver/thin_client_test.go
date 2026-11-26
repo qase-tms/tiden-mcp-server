@@ -275,6 +275,12 @@ func TestGetTraceabilityInputValidation(t *testing.T) {
 }
 
 func TestSessionProgressCompactTestsFlag(t *testing.T) {
+	description := toolDescription(t, "session_progress")
+	for _, phrase := range []string{"resolved, assessed specs", "local Git freshness", "tiden intent progress"} {
+		if !strings.Contains(description, phrase) {
+			t.Errorf("missing guidance %q", phrase)
+		}
+	}
 	for _, tc := range []struct {
 		name string
 		args map[string]any
@@ -285,7 +291,7 @@ func TestSessionProgressCompactTestsFlag(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var got map[string]any
-			args := map[string]any{"product_id": "p1", "session_id": "s1", "spec_ids": []string{"r1"}}
+			args := map[string]any{"product_id": "p1", "session_id": "s1", "spec_ids": []string{"r1", "stale"}, "intent_branch": "intent/x"}
 			for k, v := range tc.args {
 				args[k] = v
 			}
@@ -294,7 +300,7 @@ func TestSessionProgressCompactTestsFlag(t *testing.T) {
 				if err := json.Unmarshal(data, &got); err != nil {
 					t.Errorf("request body: %v", err)
 				}
-				_, _ = w.Write([]byte(`{"requirements":[{"requirementId":"r1","canonicalId":"m1","coverage":"verified","testCount":5,"tests":[{"signature":"pkg::TestA"}]}],"summary":{"total":1,"verified":1},"intentBranchStatus":"open","freshnessApplied":true}`))
+				_, _ = w.Write([]byte(`{"requirements":[{"requirementId":"r1","canonicalId":"m1","coverage":"verified","testCount":5,"tests":[{"signature":"pkg::TestA"}]}],"summary":{"total":1,"verified":1},"intentBranchStatus":"open","ready":true,"futureField":"preserved"}`))
 			}, "session_progress", args)
 			if isErr {
 				t.Fatalf("tool error: %v", body)
@@ -304,7 +310,7 @@ func TestSessionProgressCompactTestsFlag(t *testing.T) {
 				t.Errorf("compactTests = %v, want %v (%v)", got["compactTests"], tc.want, got)
 			}
 			row := body["requirements"].([]any)[0].(map[string]any)
-			if row["testCount"] != float64(5) || row["canonicalId"] != "m1" || body["intentBranchStatus"] != "open" || body["freshnessApplied"] != true {
+			if row["testCount"] != float64(5) || row["canonicalId"] != "m1" || body["intentBranchStatus"] != "open" || body["futureField"] != "preserved" || body["ready"] != true || body["summary"].(map[string]any)["total"] != float64(1) || len(got["requirementIds"].([]any)) != 2 || got["intentBranch"] != "intent/x" {
 				t.Errorf("response fields lost: %v", body)
 			}
 			if row["tests"].([]any)[0].(map[string]any)["signature"] != "pkg::TestA" {

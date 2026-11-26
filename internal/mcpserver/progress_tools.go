@@ -20,9 +20,8 @@ type sessionProgressArgs struct {
 
 func registerSessionProgress(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "session_progress",
-		Description: "Per-spec progress for one intent session: coverage on the ladder no_test -> not_run -> failing -> verified, whether the deciding tests came from this session, overall readiness, and next actions. By default each spec lists up to 20 failing tests, then up to 5 other tests, plus a testCount of all linked tests; pass all_tests=true to list every linked test (large for wide scopes). Servers that predate compact tests always list every test. Call after reporting test results to see what moved and what still blocks readiness. " +
-			"This does NOT start, refine, or close the session: the intent lifecycle stays CLI-only, because closing grades against the local git diff and the session record in `~/.tiden/sessions/<id>.json`, neither of which this server has — use this tool to read where a session stands, and `tiden intent close` to act on it.",
+		Name:        "session_progress",
+		Description: "Read server coverage for the supplied spec_ids with an optional intent_branch overlay. The summary and ready flag describe the resolved, assessed specs. Stale IDs can be omitted, branch copies can resolve to one spec, and additional test-linked specs can appear in the rows. This tool sends no local Git freshness evidence. To check whether the session can close on the current diff, run tiden intent progress with the same session and change ranges. By default each spec lists up to 20 failing tests and 5 other tests plus testCount. Pass all_tests=true for the full list. Older servers may always return all tests. The intent lifecycle stays in the CLI because close reads the local session record and Git diff, neither of which this server has.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, args sessionProgressArgs) (*mcp.CallToolResult, any, error) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
