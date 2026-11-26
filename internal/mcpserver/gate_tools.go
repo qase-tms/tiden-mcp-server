@@ -26,15 +26,16 @@ func scopeFor(releaseID, branch string) string {
 // build's test results. The server refuses the read with QG_CAPTURE_PENDING;
 // that is a state to report with its next move, not a tool failure.
 type releaseGatePending struct {
-	Status     string `json:"status"` // always "pending"
-	ReleaseID  string `json:"releaseId"`
-	Message    string `json:"message"`
-	NextAction string `json:"nextAction"`
+	Status     string        `json:"status"` // always "pending"
+	ReleaseID  string        `json:"releaseId"`
+	Message    string        `json:"message"`
+	NextAction string        `json:"nextAction"`
+	Guidance   *gateGuidance `json:"mcpGuidance,omitempty"`
 }
 
 // releaseGateError answers a pending release gate as a normal result; every
 // other error stays a tool error.
-func releaseGateError(err error, releaseID string) (*mcp.CallToolResult, any, error) {
+func releaseGateError(err error, releaseID string, guidance *gateGuidance) (*mcp.CallToolResult, any, error) {
 	if releaseID == "" || !api.IsCapturePending(err) {
 		return toolError(err)
 	}
@@ -44,7 +45,29 @@ func releaseGateError(err error, releaseID string) (*mcp.CallToolResult, any, er
 		Message:   api.CapturePendingMessage(err),
 		NextAction: "Wait for the test runs of the release's build to finish: the gate is captured automatically once they settle. " +
 			"To capture it now from the results that exist, run `tiden release capture " + releaseID + "`.",
+		Guidance: guidance,
 	})
+}
+
+type gateGuidance struct {
+	Operation       string `json:"operation"`
+	RequestedScope  string `json:"requestedScope"`
+	Branch          string `json:"branch,omitempty"`
+	LocalCloseCheck string `json:"localCloseCheck,omitempty"`
+}
+
+func newGateGuidance(operation, releaseID, branch string) gateGuidance {
+	guidance := gateGuidance{Operation: operation, RequestedScope: scopeFor(releaseID, branch)}
+	if guidance.RequestedScope == "branch" {
+		guidance.Branch = branch
+		guidance.LocalCloseCheck = "For the local close conditions, run `tiden intent progress` for the session on the same diff."
+	}
+	return guidance
+}
+
+type gateVerdictResult struct {
+	*model.Verdict
+	Guidance gateGuidance `json:"mcpGuidance"`
 }
 
 // -- gate_check ----------------------------------------------------------------
@@ -63,11 +86,12 @@ func registerGateCheck(srv *mcp.Server, client *api.Client) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		v, err := client.ComputeVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
+		guidance := newGateGuidance("compute", args.ReleaseID, args.Branch)
+		v, err := client.ComputeVerdict(ctx, args.ProductID, guidance.RequestedScope, args.ReleaseID, args.Branch)
 		if err != nil {
-			return releaseGateError(err, args.ReleaseID)
+			return releaseGateError(err, args.ReleaseID, &guidance)
 		}
-		return toolResult(v)
+		return toolResult(gateVerdictResult{Verdict: v, Guidance: guidance})
 	})
 }
 
@@ -87,11 +111,12 @@ func registerGetVerdict(srv *mcp.Server, client *api.Client) {
 		if args.ProductID == "" {
 			return toolError(errMissingField("product_id"))
 		}
-		v, err := client.GetVerdict(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch)
+		guidance := newGateGuidance("read_latest", args.ReleaseID, args.Branch)
+		v, err := client.GetVerdict(ctx, args.ProductID, guidance.RequestedScope, args.ReleaseID, args.Branch)
 		if err != nil {
-			return releaseGateError(err, args.ReleaseID)
+			return releaseGateError(err, args.ReleaseID, &guidance)
 		}
-		return toolResult(v)
+		return toolResult(gateVerdictResult{Verdict: v, Guidance: guidance})
 	})
 }
 
@@ -167,7 +192,7 @@ func registerGetTraceability(srv *mcp.Server, client *api.Client) {
 		}
 		r, err := client.GetTraceabilityView(ctx, args.ProductID, scopeFor(args.ReleaseID, args.Branch), args.ReleaseID, args.Branch, opts)
 		if err != nil {
-			return releaseGateError(err, args.ReleaseID)
+			return releaseGateError(err, args.ReleaseID, nil)
 		}
 		out := traceabilityOutput{}
 		dropped := false

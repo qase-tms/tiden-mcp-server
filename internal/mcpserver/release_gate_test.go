@@ -72,6 +72,7 @@ func TestReleaseGateTools_PendingReleaseIsAStateNotAnError(t *testing.T) {
 			}
 			var got struct {
 				Status, ReleaseID, Message, NextAction string
+				MCPGuidance                            *struct{ Operation, RequestedScope string }
 			}
 			if err := json.Unmarshal([]byte(resultText(t, result)), &got); err != nil {
 				t.Fatalf("decode answer: %v", err)
@@ -84,6 +85,39 @@ func TestReleaseGateTools_PendingReleaseIsAStateNotAnError(t *testing.T) {
 			}
 			if !strings.Contains(got.NextAction, "tiden release capture rel-1") {
 				t.Errorf("next action = %q, want the capture command for the release", got.NextAction)
+			}
+			if operation := map[string]string{"gate_check": "compute", "get_verdict": "read_latest"}[tool]; operation != "" {
+				if got.MCPGuidance == nil || got.MCPGuidance.Operation != operation || got.MCPGuidance.RequestedScope != "release" {
+					t.Errorf("expected %s for the release, got %+v", operation, got.MCPGuidance)
+				}
+			}
+		})
+	}
+}
+
+func TestBranchVerdictTools_ExplainOperationAndLocalClose(t *testing.T) {
+	const response = `{"verdict":{"id":"v1","productId":"p1","branchId":"b1","scope":"VERDICT_SCOPE_BRANCH","status":"VERDICT_STATUS_PASS","computedAt":"2026-11-26T08:00:00Z","buildSha":"abc123def456","nextAction":"Server action","scopeInfo":{"touchedRequirements":1}}}`
+	for _, tc := range []struct{ name, method, operation string }{
+		{"gate_check", http.MethodPost, "compute"},
+		{"get_verdict", http.MethodGet, "read_latest"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body, isErr := callTool(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != tc.method {
+					t.Errorf("method = %s, want %s", r.Method, tc.method)
+				}
+				_, _ = io.WriteString(w, response)
+			}, tc.name, map[string]any{"product_id": "p1", "branch": "intent/x"})
+			if isErr || body["status"] != "VERDICT_STATUS_PASS" || body["scope"] != "VERDICT_SCOPE_BRANCH" || body["nextAction"] != "Server action" ||
+				body["computedAt"] != "2026-11-26T08:00:00Z" || body["buildSha"] != "abc123def456" || body["scopeInfo"] == nil {
+				t.Fatalf("lost server verdict fields: %v", body)
+			}
+			guidance, ok := body["mcpGuidance"].(map[string]any)
+			if !ok || guidance["operation"] != tc.operation || guidance["requestedScope"] != "branch" || guidance["branch"] != "intent/x" {
+				t.Fatalf("missing scope and operation: %v", body)
+			}
+			if check, _ := guidance["localCloseCheck"].(string); !strings.Contains(check, "tiden intent progress") || !strings.Contains(check, "same diff") {
+				t.Errorf("missing local close check: %v", guidance)
 			}
 		})
 	}

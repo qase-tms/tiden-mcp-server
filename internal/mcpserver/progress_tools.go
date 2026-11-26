@@ -2,6 +2,9 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -16,6 +19,12 @@ type sessionProgressArgs struct {
 	RequirementIDs []string `json:"spec_ids"                jsonschema:"Spec UUIDs in the session's scope (required, non-empty). Typically the session's retrieved specs plus its draft."`
 	IntentBranch   string   `json:"intent_branch,omitempty" jsonschema:"Intent branch name; includes that branch's proposed test links in coverage. Omit for durable (main) links only."`
 	AllTests       bool     `json:"all_tests,omitempty"     jsonschema:"List every linked test of every spec. Default false: each spec lists at most 20 failing tests, then at most 5 others, plus testCount."`
+}
+
+type sessionProgressGuidance struct {
+	CoverageScope            string `json:"coverageScope"`
+	LocalGitEvidenceProvided bool   `json:"localGitEvidenceProvided"`
+	LocalCloseCheck          string `json:"localCloseCheck"`
 }
 
 func registerSessionProgress(srv *mcp.Server, client *api.Client) {
@@ -41,6 +50,23 @@ func registerSessionProgress(srv *mcp.Server, client *api.Client) {
 		if err != nil {
 			return toolError(err)
 		}
-		return toolResult(resp)
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(resp, &fields); err != nil {
+			return toolError(fmt.Errorf("decode session progress: %w", err))
+		}
+		if fields == nil {
+			return toolError(fmt.Errorf("session progress returned no response object"))
+		}
+		sessionArg := "'" + strings.ReplaceAll(args.SessionID, "'", "'\\''") + "'"
+		guidance, err := json.Marshal(sessionProgressGuidance{
+			CoverageScope: "The summary and ready flag describe the specs assessed by the server.",
+			LocalCloseCheck: "For close conditions on the current diff, run `tiden intent progress --session=" + sessionArg +
+				" --format text` in the session checkout with its original --changes ranges, if used.",
+		})
+		if err != nil {
+			return toolError(err)
+		}
+		fields["mcpGuidance"] = guidance
+		return toolResult(fields)
 	})
 }

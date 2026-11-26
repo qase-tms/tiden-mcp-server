@@ -133,7 +133,7 @@ claude mcp add tiden -- tiden-mcp-server
 | `get_verdict` | Read the latest Quality Gate verdict (release, branch, or current main), with `releaseCapture` and the `pending` answer as in `gate_check`. A first branch or main read can compute a missing snapshot |
 | `get_overview` | Current product gate state on main |
 | `get_traceability` | Spec-to-test traceability (release, branch, or current main). With no scope it returns a per-component rollup: status, spec counts per coverage state, and the display refs and ids of specs that are not verified (up to 50 per component, then a count). `feature_id` (spec UUID, subtree) or `component_id` (component UUID) returns one summary row per spec, with `linked`/`passed`/`failed`/`stale` counts when the server sends them. `include_tests=true` returns each linked test and needs `feature_id` or `component_id`. When the server ignores the filter, the tool filters client-side and marks the output `featureFilter`/`componentFilter: "client"` (component status is then component-wide). A release still waiting on its build's test results answers `status: pending`. |
-| `session_progress` | Read server coverage for the supplied spec IDs and optional branch overlay. The summary and `ready` flag cover resolved, assessed specs. To check close conditions and local Git freshness, run `tiden intent progress` for the same session and change ranges. Each spec lists up to 20 failing tests, then up to 5 others, plus `testCount`; `all_tests=true` lists every test. The server response is passed through unchanged. |
+| `session_progress` | Read server coverage for the supplied spec IDs and optional branch overlay. The summary and `ready` flag cover resolved, assessed specs. The result includes the CLI command for checking close conditions in the session checkout. Each spec lists up to 20 failing tests, then up to 5 others, plus `testCount`; `all_tests=true` lists every test. |
 | `record_risk_acceptances` | Record one intent session's risk acceptances and test deferrals (does not close the session; that stays CLI-only) |
 | `create_test` | Create a test suite or case |
 | `update_test` | Update a test case |
@@ -161,6 +161,17 @@ claude mcp add tiden -- tiden-mcp-server
 All tools return compact JSON matching the Tiden public API response shapes.
 In the API a spec is the `requirement` resource, so results keep requirement
 field names (`requirements`, `requirementId`).
+
+`session_progress` preserves server fields, including `assessment` and
+`freshnessApplied` when provided. Its `mcpGuidance` explains the scope of
+`ready`, reports that the request supplied no local Git evidence, and includes
+the same-session `tiden intent progress` command. Use the session's original
+change ranges if it used `--changes`. `gate_check` and `get_verdict` include
+the requested scope and operation in `mcpGuidance`. A `read_latest` operation
+can trigger the first branch or main snapshot. For a local close question,
+branch results direct the agent to the CLI. The result of
+`record_risk_acceptances` reports the decisions written to the server.
+`tiden intent close` confirms closure from the session checkout.
 
 Specs were formerly called *requirements*: up to 0.6.0 the spec tools were
 named `*_requirement(s)` and took `requirement_id`, `requirement_ids`,

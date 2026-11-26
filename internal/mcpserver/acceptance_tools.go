@@ -29,7 +29,7 @@ type recordRiskAcceptancesArgs struct {
 func registerRecordRiskAcceptances(srv *mcp.Server, client *api.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "record_risk_acceptances",
-		Description: "Record one intent session's risk acceptances and test deferrals — the priced exceptions that let `tiden intent close` exit despite open coverage. " +
+		Description: "Record one intent session's risk acceptances and test deferrals for the CLI to consider at close. " +
 			"The only admissible criteria are: R1 — unverifiable in this environment; R2 — blocked by an external dependency; R3 — a human-drawn task boundary, whose evidence MUST quote that boundary; R4 — no user-observable consequence; R5 — known-broken verification infrastructure. Volume, ownership, effort, and a bare 'out of scope' are not criteria and will be refused. " +
 			"spec_id is now OPTIONAL. Pass it (the draft spec UUID) to use the legacy path, which writes onto that draft's provenance unchanged. Omit it to write directly onto the session record's judgements instead — but then the session must already exist server-side as an intent_sessions row (created by the tiden CLI) or the call fails with INTENT_SESSION_NOT_FOUND; older CLIs and drafts should keep passing spec_id. " +
 			"This does NOT close the session, start one, or replace `tiden intent close`: the intent lifecycle (start/refine/close) needs local git state and the CLI's session record, neither of which this server has — call this only against a session the CLI already opened, to hand it a disposition it can act on. " +
@@ -70,6 +70,13 @@ func registerRecordRiskAcceptances(srv *mcp.Server, client *api.Client) {
 		if err != nil {
 			return toolError(err)
 		}
-		return toolResult(resp)
+		return toolResult(struct {
+			*api.RecordSessionRiskAcceptancesResponse
+			Guidance string `json:"mcpGuidance"`
+		}{
+			RecordSessionRiskAcceptancesResponse: resp,
+			Guidance: "The server recorded the decisions. Check local close conditions with `tiden intent progress` for this session. " +
+				"Confirmation of closure comes from `tiden intent close`.",
+		})
 	})
 }
