@@ -50,3 +50,20 @@ func TestRecordRiskAcceptances_PostsOnceAndRelaysRefusal(t *testing.T) {
 		t.Errorf("tool error %q does not carry the server message %q", text, refusal)
 	}
 }
+
+func TestRecordRiskAcceptances_ResultExplainsClosure(t *testing.T) {
+	rec := &holdRecorder{response: `{"acceptancesRecorded":0,"deferredRequirements":1,"replacedRows":1}`}
+	body, isErr := callTool(t, rec.handler(t), "record_risk_acceptances", map[string]any{
+		"product_id":              "p1",
+		"intent_branch":           "intent/2026-10-29-example",
+		"session_id":              "s1",
+		"proposed_test_spec_refs": []string{"FEED-49"},
+	})
+	if isErr || body["deferredRequirements"] != float64(1) || body["replacedRows"] != float64(1) {
+		t.Fatalf("lost recorded deferral: %v", body)
+	}
+	if guidance, _ := body["mcpGuidance"].(string); !strings.Contains(guidance, "tiden intent progress") || !strings.Contains(guidance, "Confirmation of closure comes from `tiden intent close`") {
+		t.Errorf("missing closure guidance: %v", body)
+	}
+	rec.only(t)
+}

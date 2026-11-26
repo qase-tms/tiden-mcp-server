@@ -275,40 +275,86 @@ func TestGetTraceabilityInputValidation(t *testing.T) {
 }
 
 func TestSessionProgressCompactTestsFlag(t *testing.T) {
+	description := toolDescription(t, "session_progress")
+	for _, phrase := range []string{"resolved, assessed specs", "local Git freshness", "tiden intent progress"} {
+		if !strings.Contains(description, phrase) {
+			t.Errorf("missing guidance %q", phrase)
+		}
+	}
+	const assessment = `,"assessment":{"requestedUniqueIds":2,"resolvedSpecs":1,"assessedSpecs":1,"unresolvedIds":1,"excludedAdopted":1},"freshnessApplied":false`
+	const sessionUUID = "5ACBC177-62DE-4FA3-AA53-90E0AA39BDB1"
+	const unvalidatedID = "s1' & unvalidated"
 	for _, tc := range []struct {
-		name string
-		args map[string]any
-		want bool
+		name       string
+		allTests   bool
+		assessment string
+		sessionID  string
+		command    string
 	}{
-		{"default is compact", map[string]any{}, true},
-		{"all_tests lists everything", map[string]any{"all_tests": true}, false},
+		{name: "old server, compact", sessionID: sessionUUID},
+		{name: "old server, all tests", allTests: true, sessionID: sessionUUID},
+		{name: "new server, compact", assessment: assessment, sessionID: sessionUUID},
+		{name: "new server, all tests", allTests: true, assessment: assessment, sessionID: sessionUUID},
+		{name: "compatible server returning data for an unvalidated ID", sessionID: unvalidatedID, command: "`tiden intent progress --format text`"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var got map[string]any
-			args := map[string]any{"product_id": "p1", "session_id": "s1", "spec_ids": []string{"r1"}}
-			for k, v := range tc.args {
-				args[k] = v
+			args := map[string]any{"product_id": "p1", "session_id": tc.sessionID, "spec_ids": []string{"r1", "stale"}, "intent_branch": "intent/x"}
+			if tc.allTests {
+				args["all_tests"] = true
 			}
 			body, isErr := callTool(t, func(w http.ResponseWriter, r *http.Request) {
 				data, _ := io.ReadAll(r.Body)
 				if err := json.Unmarshal(data, &got); err != nil {
 					t.Errorf("request body: %v", err)
 				}
-				_, _ = w.Write([]byte(`{"requirements":[{"requirementId":"r1","canonicalId":"m1","coverage":"verified","testCount":5,"tests":[{"signature":"pkg::TestA"}]}],"summary":{"total":1,"verified":1},"intentBranchStatus":"open","freshnessApplied":true}`))
+				_, _ = w.Write([]byte(`{"requirements":[{"requirementId":"r1","canonicalId":"m1","coverage":"verified","testCount":5,"tests":[{"signature":"pkg::TestA"}]},{"requirementId":"r2","adopted":true,"coverage":"no_test"}],"summary":{"total":1,"verified":1},"intentBranchStatus":"open","ready":true,"futureField":"preserved"` + tc.assessment + `}`))
 			}, "session_progress", args)
 			if isErr {
 				t.Fatalf("tool error: %v", body)
 			}
 			compact, _ := got["compactTests"].(bool)
-			if compact != tc.want {
-				t.Errorf("compactTests = %v, want %v (%v)", got["compactTests"], tc.want, got)
+			if compact == tc.allTests {
+				t.Errorf("compactTests = %v, want %v (%v)", got["compactTests"], !tc.allTests, got)
 			}
-			row := body["requirements"].([]any)[0].(map[string]any)
-			if row["testCount"] != float64(5) || row["canonicalId"] != "m1" || body["intentBranchStatus"] != "open" || body["freshnessApplied"] != true {
+			if _, provided := got["freshness"]; provided {
+				t.Errorf("MCP has no local Git evidence to send: %v", got)
+			}
+			rows := body["requirements"].([]any)
+			row := rows[0].(map[string]any)
+			if row["testCount"] != float64(5) || row["canonicalId"] != "m1" || body["intentBranchStatus"] != "open" || body["futureField"] != "preserved" || body["ready"] != true || body["summary"].(map[string]any)["total"] != float64(1) || len(got["requirementIds"].([]any)) != 2 || got["intentBranch"] != "intent/x" {
 				t.Errorf("response fields lost: %v", body)
 			}
 			if row["tests"].([]any)[0].(map[string]any)["signature"] != "pkg::TestA" {
 				t.Errorf("test signature lost: %v", row)
+			}
+			if len(rows) != 2 || rows[1].(map[string]any)["adopted"] != true {
+				t.Errorf("informational row lost: %v", rows)
+			}
+			guidance, ok := body["mcpGuidance"].(map[string]any)
+			closeCheck := fmt.Sprint(guidance["localCloseCheck"])
+			command := tc.command
+			if command == "" {
+				command = "`tiden intent progress --session=5acbc177-62de-4fa3-aa53-90e0aa39bdb1 --format text`"
+			}
+			if !ok || guidance["localGitEvidenceProvided"] != false ||
+				!strings.Contains(fmt.Sprint(guidance["coverageScope"]), "assessed by the server") ||
+				!strings.Contains(closeCheck, command) || !strings.Contains(closeCheck, "original --changes ranges") ||
+				strings.Contains(closeCheck, unvalidatedID) {
+				t.Errorf("missing close guidance: %v", guidance)
+			}
+			if tc.assessment == "" {
+				if _, ok := body["assessment"]; ok {
+					t.Errorf("unexpected assessment for an older server: %v", body)
+				}
+				if _, ok := body["freshnessApplied"]; ok {
+					t.Errorf("unexpected freshness conclusion: %v", body)
+				}
+			} else {
+				serverAssessment, ok := body["assessment"].(map[string]any)
+				if !ok || serverAssessment["unresolvedIds"] != float64(1) || serverAssessment["excludedAdopted"] != float64(1) || body["freshnessApplied"] != false {
+					t.Errorf("lost server assessment or freshness: %v", body)
+				}
 			}
 		})
 	}
