@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-26
+
+### Fixed
+
+- Session progress includes the scope of its readiness flag and the command for checking the current diff in its tool result. Gate results identify the requested scope and whether the tool asked to compute or read the verdict. The risk and deferral result directs the agent to the CLI for closure confirmation.
+
 ## [0.17.0] - 2026-11-19
 
 ### Added
@@ -406,6 +412,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list_tests` and `list_requirements` no longer truncate — results are now
   fetched across all pages (#4).
 
+[0.18.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/qase-tms/tiden-mcp-server/compare/v0.14.0...v0.15.0
