@@ -1,0 +1,21 @@
+internal/changelogcontract/changelog_contract_test.go
+  s_2e72719fe92839::t_98207a306a33a4 1-300
+CHANGELOG.md
+  s_2e72719fe92839::t_502633468db077 10-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "eb06a3d07f2fa60088deb056a6c3d144273c1033",
+  "prompts": {},
+  "sessions": {
+    "s_2e72719fe92839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06fb3806-2e8d-4912-be13-8bf56489e112",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+docs/changelog/2026-11-26-session-verification.md
+  s_d6a21f9cfc4064::t_fa51bfc59ba11a 6
+internal/mcpserver/thin_client_test.go
+  s_d6a21f9cfc4064::t_9fe209b8095917 284,286-288,290-293,298-299,306,312-316,318-319,326-348
+README.md
+  s_d6a21f9cfc4064::t_fa51bfc59ba11a 136,165-174
+  s_433a026eb02211::t_6ea0a0d2461715 175
+internal/mcpserver/acceptance_tools.go
+  s_d6a21f9cfc4064::t_72b8af81b48082 32,73-80
+internal/mcpserver/progress_tools.go
+  s_d6a21f9cfc4064::t_72b8af81b48082 5-7,24-29,53-70
+internal/mcpserver/gate_tools.go
+  s_d6a21f9cfc4064::t_72b8af81b48082 29-33,38,48,52,56-72,89-90,92,94,114-115,117,119,195
+  s_d6a21f9cfc4064::t_89e59b485df9a6 53-55
+internal/mcpserver/release_gate_test.go
+  s_d6a21f9cfc4064::t_9fe209b8095917 75,89-121
+internal/mcpserver/acceptance_tools_test.go
+  s_d6a21f9cfc4064::t_9fe209b8095917 53-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8413abd4471287def200f6ea1b57388b7ecff44",
+  "prompts": {},
+  "sessions": {
+    "s_433a026eb02211": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21457-fa56-7bb0-a919-956887908bb0",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    },
+    "s_d6a21f9cfc4064": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a217b7-45a0-7303-b07a-aefd3ca30735",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

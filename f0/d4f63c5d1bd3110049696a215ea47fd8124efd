@@ -1,0 +1,21 @@
+internal/model/types.go
+  s_f4c1b86f9b7a61::t_440377a49982a2 35-45
+internal/mcpserver/tools.go
+  s_f4c1b86f9b7a61::t_b7d293e2cfe5c1 335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "f0d4f63c5d1bd3110049696a215ea47fd8124efd",
+  "prompts": {},
+  "sessions": {
+    "s_f4c1b86f9b7a61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3be46d60-3c03-4c9f-95ec-a351f97f78d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

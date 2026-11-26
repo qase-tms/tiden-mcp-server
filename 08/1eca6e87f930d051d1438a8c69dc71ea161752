@@ -1,0 +1,36 @@
+internal/mcpserver/tools.go
+  s_167fffd223cbe1::t_4f122250809828 30,337
+CHANGELOG.md
+  s_167fffd223cbe1::t_5ab7f32b933d92 10-35
+internal/api/test_merge.go
+  s_167fffd223cbe1::t_4f122250809828 1-91
+internal/mcpserver/test_merge_tools_test.go
+  s_167fffd223cbe1::t_f7c3a18dc4c54a 168-169
+  s_167fffd223cbe1::t_6c56502658682c 1-167,170-194
+internal/model/types.go
+  s_167fffd223cbe1::t_4f122250809828 201-219
+internal/mcpserver/testrun_tools.go
+  s_167fffd223cbe1::t_4f122250809828 151,157
+README.md
+  s_167fffd223cbe1::t_5ab7f32b933d92 118-121,141
+internal/mcpserver/server_test.go
+  s_167fffd223cbe1::t_4f122250809828 29-31,503-505
+internal/mcpserver/test_merge_tools.go
+  s_167fffd223cbe1::t_4f122250809828 1-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "081eca6e87f930d051d1438a8c69dc71ea161752",
+  "prompts": {},
+  "sessions": {
+    "s_167fffd223cbe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e135bf6c-9a07-4bc4-8606-5e4560437095",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

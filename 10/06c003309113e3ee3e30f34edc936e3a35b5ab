@@ -1,0 +1,19 @@
+internal/mcpserver/tools.go
+  s_441c5448e7d34a::t_a377d27d509716 451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1006c003309113e3ee3e30f34edc936e3a35b5ab",
+  "prompts": {},
+  "sessions": {
+    "s_441c5448e7d34a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fe75e2b-ee7f-4025-9c1a-4c930a0e803a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

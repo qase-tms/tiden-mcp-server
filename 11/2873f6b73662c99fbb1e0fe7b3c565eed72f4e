@@ -1,0 +1,30 @@
+internal/api/issue.go
+  s_167fffd223cbe1::t_bda99baa0a16c0 153,160-162,164
+internal/mcpserver/issue_tools.go
+  s_167fffd223cbe1::t_bda99baa0a16c0 238,252
+internal/model/issue.go
+  s_167fffd223cbe1::t_bda99baa0a16c0 21
+internal/mcpserver/issue_tools_test.go
+  s_167fffd223cbe1::t_bda99baa0a16c0 5,8,63-93
+  s_167fffd223cbe1::t_429ab350b8c38d 94-95
+CHANGELOG.md
+  s_167fffd223cbe1::t_bda99baa0a16c0 36-45,288-289
+internal/api/issue_test.go
+  s_167fffd223cbe1::t_bda99baa0a16c0 167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "112873f6b73662c99fbb1e0fe7b3c565eed72f4e",
+  "prompts": {},
+  "sessions": {
+    "s_167fffd223cbe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e135bf6c-9a07-4bc4-8606-5e4560437095",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

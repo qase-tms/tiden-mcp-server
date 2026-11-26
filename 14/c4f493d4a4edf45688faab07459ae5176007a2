@@ -1,0 +1,31 @@
+internal/mcpserver/thin_client_test.go
+  s_50cf5a413903de::t_68cccfbfc1918f 278-283,294,303,313
+internal/mcpserver/gate_tools.go
+  s_50cf5a413903de::t_68cccfbfc1918f 61,85
+docs/changelog/2026-11-26-session-verification.md
+  s_50cf5a413903de::t_706e516634f1f6 1,4
+  s_50cf5a413903de::t_68cccfbfc1918f 2-3,5-6
+internal/mcpserver/progress_tools.go
+  s_50cf5a413903de::t_706e516634f1f6 24
+  s_50cf5a413903de::t_56bebb9170da60 23
+internal/api/session_progress.go
+  s_50cf5a413903de::t_68cccfbfc1918f 9
+README.md
+  s_50cf5a413903de::t_68cccfbfc1918f 132-133,136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14c4f493d4a4edf45688faab07459ae5176007a2",
+  "prompts": {},
+  "sessions": {
+    "s_50cf5a413903de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21453-c1d0-75f2-922a-d02ddca3db1e",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

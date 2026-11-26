@@ -1,0 +1,47 @@
+README.md
+  s_77b17c008efdba::t_dce7aa9ba438fa 154-156
+internal/mcpserver/issue_link_tools_test.go
+  s_77b17c008efdba::t_9787da19700230 1-190
+  s_77b17c008efdba::t_abc627f080910e 191-224
+internal/mcpserver/issue_link_tools.go
+  s_77b17c008efdba::t_4ca1a98d9c02c2 61-65
+  s_85619f099f461f::t_1882cc9a257f86 1-60,66-185
+CHANGELOG.md
+  s_77b17c008efdba::t_ddddcf6dd88fbb 10-21
+internal/api/issue.go
+  s_77b17c008efdba::t_069726f77e1f84 75-77
+internal/api/issue_links.go
+  s_77b17c008efdba::t_be64bc5e0a5924 1-97
+internal/mcpserver/issue_tools.go
+  s_77b17c008efdba::t_4eb4171d31ae21 191,246
+internal/mcpserver/server_test.go
+  s_77b17c008efdba::t_e170ce8c5f9505 64-66
+internal/mcpserver/tools.go
+  s_77b17c008efdba::t_1f828b3322e1c0 57-59
+internal/model/issue.go
+  s_77b17c008efdba::t_4c611f6a6f1c83 91-113,129-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a1f582d2bac51a28984aa7caf08521714809d9e",
+  "prompts": {},
+  "sessions": {
+    "s_77b17c008efdba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca7a8b5e-c2f2-40bc-b2ca-235735af1e4e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    },
+    "s_85619f099f461f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b73d2467-8432-40d7-bca4-eb4b1c7440be",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

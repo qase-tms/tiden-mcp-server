@@ -1,0 +1,43 @@
+internal/mcpserver/gate_tools.go
+  s_ddcee9af21d911::t_fc69d22dfd227e 98-103,108-113,118-137,145-182,184
+  s_ddcee9af21d911::t_82c36c16ee1db5 5,10
+internal/api/requirement.go
+  s_ddcee9af21d911::t_da1864e6326b60 65-69,74
+internal/api/session_progress_test.go
+  s_ddcee9af21d911::t_ccbe02603ea3dc 5,56-70,72-73,75-76,78-81,83-84
+  s_ddcee9af21d911::t_1aec126f2ce280 29-31,33
+internal/api/session_progress.go
+  s_ddcee9af21d911::t_735c858e173752 5,32-34,36,40
+internal/mcpserver/progress_tools.go
+  s_ddcee9af21d911::t_da1864e6326b60 18,24,40
+internal/mcpserver/thin_client_test.go
+  s_ddcee9af21d911::t_453c58a44cbb7f 6,39,41-47,51-277,279-281,283-284,287-291,293-295,297-298,302-304,306-308,310-311,333,345-347,349-350,363
+CHANGELOG.md
+  s_ddcee9af21d911::t_fd0b7f239d7b5d 12-48
+internal/mcpserver/traceability_view.go
+  s_ddcee9af21d911::t_fc69d22dfd227e 1-235
+README.md
+  s_ddcee9af21d911::t_fd0b7f239d7b5d 112,128-129
+internal/mcpserver/tools.go
+  s_ddcee9af21d911::t_da1864e6326b60 141-142,149,279
+internal/api/gate.go
+  s_ddcee9af21d911::t_735c858e173752 45-48,88-91,97-99
+internal/api/gate_test.go
+  s_ddcee9af21d911::t_735c858e173752 128,130,132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be581c9d1c89e3b1d8ebe90c9aa0d027b425d7d5",
+  "prompts": {},
+  "sessions": {
+    "s_ddcee9af21d911": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2920c358-2abe-4522-bde7-3b251e05387f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

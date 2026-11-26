@@ -1,0 +1,31 @@
+internal/api/requirement_identity.go
+  s_7f23d388c1e3ac::t_43a9d3166d0137 1-58
+internal/mcpserver/tools.go
+  s_7f23d388c1e3ac::t_43a9d3166d0137 139-141,147,152-164
+internal/model/requirement_identity.go
+  s_7f23d388c1e3ac::t_43a9d3166d0137 1-27
+CHANGELOG.md
+  s_7f23d388c1e3ac::t_34221438b53c59 12-18
+README.md
+  s_7f23d388c1e3ac::t_34221438b53c59 61
+internal/mcpserver/requirement_identity_test.go
+  s_7f23d388c1e3ac::t_6102c3e46629ed 1-22,26-49,57-63,65-106
+  s_7f23d388c1e3ac::t_1570c2bd35c1a8 50-56
+  s_7f23d388c1e3ac::t_36f2cbcd567b90 23-25,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "aff2daa3190914b2909fc7db9ae397bc456e7e17",
+  "prompts": {},
+  "sessions": {
+    "s_7f23d388c1e3ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07631-a1b4-7591-97f5-134293de5a43",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+internal/mcpserver/progress_tools.go
+  s_d6a21f9cfc4064::t_02c2f76418dd06 60-65,67-68
+internal/mcpserver/thin_client_test.go
+  s_d6a21f9cfc4064::t_02c2f76418dd06 285-286,291-292,294-298,302,335-339,342-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90cd9372e06a54e974beac4f59a31f15352c5356",
+  "prompts": {},
+  "sessions": {
+    "s_d6a21f9cfc4064": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a217b7-45a0-7303-b07a-aefd3ca30735",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Nikolay Pisarev <npisarev@qase.io>"
+    }
+  }
+}
